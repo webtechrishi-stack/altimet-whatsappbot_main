@@ -366,9 +366,9 @@ REAL_ESTATE_PATTERNS = [
 BOT_SERVICE_PATTERNS = [
     r"\b(?:what is aris|who is aris|what does aris do|who are you|who built you|who made you)\b",
     r"\b(?:altimet|altimet ai|altimetai)\b",
-    r"\b(?:whatsapp bot|ai bot|ai agent|chatbot|automation service|bot service|saas|api)\b",
+    r"\b(?:whatsapp bot|ai bot|ai agent|chatbot|automation service|bot service|saas|api|ai service|ai services)\b",
     r"\b(?:contact (?:us|you|team)|email|phone number|call me|support|customer care)\b",
-    r"\b(?:how (?:does this|do you) work|what do you do|services offered)\b",
+    r"\b(?:how (?:does this|do you) work|what do you do|services offered|what services|services you give|services u gave|services u give|what you offer)\b",
     r"\b(?:aap kaun ho|kon ho|kya karte ho|kya service hai)\b",
 ]
 
@@ -446,14 +446,14 @@ def classify_inbound_message(message_text: str, sender: str) -> Tuple[bool, str,
     if is_real_estate:
         return True, "REAL_ESTATE_INQUIRY", {"category": "REAL_ESTATE"}
 
-    # 8. Check for brief natural human greetings
-    words = lower.split()
-    if len(words) <= 4:
-        is_greeting = any(re.search(pat, lower) for pat in NATURAL_GREETINGS)
-        if is_greeting:
-            return True, "HUMAN_GREETING", {"category": "GREETING"}
+    # 8. Check for natural human greetings
+    is_greeting = any(re.search(pat, lower) for pat in NATURAL_GREETINGS)
+    if is_greeting:
+        return True, "HUMAN_GREETING", {"category": "GREETING"}
 
-    return False, "IRRELEVANT_MESSAGE", {"category": "IRRELEVANT"}
+    # 9. All other genuine customer messages: ALWAYS ALLOW & PROCESS!
+    # Real customer messages should NEVER be silently ignored.
+    return True, "GENUINE_USER_MESSAGE", {"category": "GENUINE"}
 
 
 # =============================================================================

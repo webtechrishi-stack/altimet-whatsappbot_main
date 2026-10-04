@@ -30,7 +30,7 @@ class NextBestActionEngine:
     IDENTITY_PATTERNS = [
         r"\b(?:who are you|who'?s this|who is this|kon ho|kaun ho|aap kaun ho|kon ho aap|aap kon|kahan se bol rahe|kis baare me)\b",
         r"\b(?:what is aris|who is aris|what does aris do|about aris|altimet|altimet ai|what do you do)\b",
-        r"\b(?:whatsapp bot|ai bot|bot service|automation service|how does this bot work)\b",
+        r"\b(?:whatsapp bot|ai bot|bot service|automation service|how does this bot work|ai service|ai services|what services|services offered|services you give|services u gave|services u give|what you offer)\b",
     ]
 
     OPT_OUT_PATTERNS = [

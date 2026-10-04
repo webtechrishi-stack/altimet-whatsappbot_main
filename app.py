@@ -358,6 +358,68 @@ def verify_webhook():
     return "Verification failed", 403
 
 
+def _async_process_and_reply(
+    sender: str,
+    profile_name: str,
+    message_text: str,
+    conversation_id: str,
+    lead_id: str,
+    session_data: Dict[str, Any]
+):
+    """
+    Background worker thread for conversational sales generation & WhatsApp reply dispatch.
+    Ensures Meta Webhook receives immediate HTTP 200 OK without blocking on LLM latency.
+    """
+    with _get_user_lock(sender):
+        try:
+            # Load Recent History for Context
+            history = DB.messages.get_last_messages(conversation_id=conversation_id, limit=20)
+
+            # Generate reply via conversational sales engine
+            reply_text, updated_session = aris_orchestrator.process_message(
+                sender_id=sender,
+                profile_name=profile_name,
+                message_text=message_text,
+                session=session_data,
+                history=history,
+                conversation_id=conversation_id
+            )
+
+            if updated_session:
+                DB.sessions.update_session(
+                    wa_id=sender,
+                    state=updated_session.get("state"),
+                    context=updated_session.get("context")
+                )
+
+            # Dispatch reply via Meta WhatsApp API
+            api_resp = whatsapp_client.send_text(recipient=sender, message=reply_text)
+            raw_res = getattr(api_resp, "raw_response", {}) or {}
+            if raw_res.get("status") == "blocked":
+                print(f"[WHATSAPP BLOCKED] Message to {sender} blocked by safety guard: {raw_res.get('reason')}", flush=True)
+                return
+
+            meta_out_id = getattr(api_resp, "meta_message_id", None)
+            is_success = getattr(api_resp, "success", True)
+            print(f"[WHATSAPP SENT] Success: {is_success} Meta Message ID: {meta_out_id}", flush=True)
+
+            # PERSIST OUTBOUND AI MESSAGE
+            DB.messages.save_outbound_ai_message(
+                conversation_id=conversation_id,
+                wa_id=sender,
+                text=reply_text,
+                lead_id=lead_id,
+                whatsapp_message_id=meta_out_id,
+                message_type="TEXT",
+                status="ACCEPTED" if is_success else "FAILED"
+            )
+            DB.conversations.increment_message_count(conversation_id, count=1)
+            DB.conversations.update_last_message(conversation_id)
+            DB.conversations.update_timestamps(conversation_id, sender_type="AI")
+        except Exception as ex:
+            print(f"[ASYNC WORKER ERROR] Exception replying to {sender}: {ex}", flush=True)
+
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     """
@@ -632,50 +694,14 @@ def webhook():
                         except ImportError as ex:
                             print(f"[SAFETY GUARD WARNING] Could not import safety_guard: {ex}")
 
-                        # Load Recent History for Context
-                        history = DB.messages.get_last_messages(conversation_id=conversation_id, limit=20)
-
-                        # Generate reply via conversational sales engine
-                        reply_text, updated_session = aris_orchestrator.process_message(
-                            sender_id=sender,
-                            profile_name=profile_name,
-                            message_text=message_text,
-                            session=session_data,
-                            history=history,
-                            conversation_id=conversation_id
-                        )
-
-                        if updated_session:
-                            DB.sessions.update_session(
-                                wa_id=sender,
-                                state=updated_session.get("state"),
-                                context=updated_session.get("context")
-                            )
-
-                        # Dispatch reply via Meta WhatsApp API
-                        api_resp = whatsapp_client.send_text(recipient=sender, message=reply_text)
-                        raw_res = getattr(api_resp, "raw_response", {}) or {}
-                        if raw_res.get("status") == "blocked":
-                            print(f"[WHATSAPP BLOCKED] Message to {sender} blocked by safety guard: {raw_res.get('reason')}")
-                            continue
-
-                        meta_out_id = getattr(api_resp, "meta_message_id", None)
-                        is_success = getattr(api_resp, "success", True)
-                        print(f"[WHATSAPP SENT] Success: {is_success} Meta Message ID: {meta_out_id}")
-
-                        # PERSIST OUTBOUND AI MESSAGE
-                        DB.messages.save_outbound_ai_message(
-                            conversation_id=conversation_id,
-                            wa_id=sender,
-                            text=reply_text,
-                            lead_id=lead_id,
-                            whatsapp_message_id=meta_out_id,
-                            message_type="TEXT",
-                            status="ACCEPTED" if is_success else "FAILED"
-                        )
-                        DB.conversations.increment_message_count(conversation_id, count=1)
-                        DB.conversations.update_last_message(conversation_id)
-                        DB.conversations.update_timestamps(conversation_id, sender_type="AI")
+                        # Launch asynchronous background worker for conversational AI generation & WhatsApp reply
+                        # Meta best practice: Immediate HTTP 200 OK (<50ms) to Meta while AI generates in background
+                        threading.Thread(
+                            target=_async_process_and_reply,
+                            args=(sender, profile_name, message_text, conversation_id, lead_id, session_data),
+                            daemon=True,
+                            name=f"aris-reply-{sender[-4:] if len(sender) >= 4 else 'user'}"
+                        ).start()
 
     except Exception as ex:
         print(f"[ERROR] Webhook processing exception [{request_id}]: {ex}")
