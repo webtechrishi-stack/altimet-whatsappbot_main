@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}ARIS — Site Visits{% endblock %}
+{% block header_title %}Site Visit Appointments{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto">
+    <!-- FILTER BAR -->
+    <div class="glass-panel p-5 rounded-2xl flex items-center justify-between">
+        <div class="flex items-center gap-2 text-xs">
+            <span class="text-slate-400 mr-2 font-medium">Status Filter:</span>
+            <select id="visit-status-filter" onchange="loadVisits()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2">
+                <option value="ALL">All Visits</option>
+                <option value="scheduled" selected>Scheduled</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="rescheduled">Rescheduled</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+        <span id="visits-count-badge" class="text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 font-semibold">
+            Loading...
+        </span>
+    </div>
+
+    <!-- VISITS TABLE -->
+    <div class="glass-panel rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-900/80 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
+                    <tr>
+                        <th class="py-3.5 px-6">Customer / Lead</th>
+                        <th class="py-3.5 px-6">Property</th>
+                        <th class="py-3.5 px-6">Date & Time</th>
+                        <th class="py-3.5 px-6">Status</th>
+                        <th class="py-3.5 px-6">Assigned Manager</th>
+                        <th class="py-3.5 px-6 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="visits-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+                    <tr>
+                        <td colspan="6" class="py-12 text-center text-slate-500">Loading appointments...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- RESCHEDULE MODAL -->
+<div id="reschedule-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-white text-base">Reschedule Site Visit</h3>
+            <button onclick="closeRescheduleModal()" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+        <form onsubmit="handleReschedule(event)" class="space-y-3 text-xs">
+            <input type="hidden" id="reschedule-visit-id">
+            <div>
+                <label class="block text-slate-400 mb-1">New Date (YYYY-MM-DD) *</label>
+                <input type="date" id="reschedule-date" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+            </div>
+            <div>
+                <label class="block text-slate-400 mb-1">New Time Slot *</label>
+                <select id="reschedule-time" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                    <option value="10:00 AM">10:00 AM</option>
+                    <option value="12:00 PM">12:00 PM</option>
+                    <option value="02:00 PM">02:00 PM</option>
+                    <option value="04:00 PM">04:00 PM</option>
+                    <option value="06:00 PM">06:00 PM</option>
+                </select>
+            </div>
+            <div class="flex justify-end gap-3 pt-3">
+                <button type="button" onclick="closeRescheduleModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
+                <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold">Confirm Reschedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadVisits() {
+        const status = document.getElementById('visit-status-filter').value;
+        try {
+            const res = await fetch(`/api/visits?status=${status}`);
+            const data = await res.json();
+            renderVisits(data.visits || []);
+        } catch (e) {
+            console.error('Error loading visits:', e);
+        }
+    }
+
+    function renderVisits(visits) {
+        const tbody = document.getElementById('visits-table-body');
+        document.getElementById('visits-count-badge').innerText = `${visits.length} Appointments`;
+
+        if (!visits.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="py-12 text-center text-slate-500">No site visits found for this status.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = visits.map(v => {
+            let statusColor = 'bg-slate-800 text-slate-400 border-slate-700';
+            if (v.status === 'scheduled') statusColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+            if (v.status === 'confirmed') statusColor = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+            if (v.status === 'rescheduled') statusColor = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+            if (v.status === 'cancelled') statusColor = 'bg-red-500/10 text-red-400 border-red-500/30';
+
+            return `
+                <tr class="hover:bg-slate-800/40 transition">
+                    <td class="py-4 px-6">
+                        <div class="font-bold text-white">${v.customer_name || 'Client'}</div>
+                        <div class="font-mono text-slate-400 text-[11px]">+${v.wa_id}</div>
+                    </td>
+                    <td class="py-4 px-6">
+                        <div class="font-semibold text-slate-200">${v.property_title || v.property_id}</div>
+                        <div class="font-mono text-slate-500 text-[10px]">${v.property_id}</div>
+                    </td>
+                    <td class="py-4 px-6 font-semibold text-white">
+                        <div>📅 ${v.visit_date}</div>
+                        <div class="text-slate-400 text-[11px]">⏰ ${v.visit_time}</div>
+                    </td>
+                    <td class="py-4 px-6">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColor}">
+                            ${v.status.toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="py-4 px-6 text-slate-400">
+                        ${v.assigned_agent || 'Unassigned'}
+                    </td>
+                    <td class="py-4 px-6 text-right space-x-2">
+                        ${v.status !== 'cancelled' ? `
+                            <button onclick="openRescheduleModal('${v.visit_id}', '${v.visit_date}')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition">
+                                Reschedule
+                            </button>
+                            <button onclick="cancelVisit('${v.visit_id}')" class="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-medium transition">
+                                Cancel
+                            </button>
+                        ` : '<span class="text-slate-500 italic text-[11px]">Cancelled</span>'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function openRescheduleModal(visitId, date) {
+        document.getElementById('reschedule-visit-id').value = visitId;
+        document.getElementById('reschedule-date').value = date || '';
+        document.getElementById('reschedule-modal').classList.remove('hidden');
+    }
+
+    function closeRescheduleModal() {
+        document.getElementById('reschedule-modal').classList.add('hidden');
+    }
+
+    async function handleReschedule(e) {
+        e.preventDefault();
+        const visitId = document.getElementById('reschedule-visit-id').value;
+        const newDate = document.getElementById('reschedule-date').value;
+        const newTime = document.getElementById('reschedule-time').value;
+
+        try {
+            const res = await fetch(`/api/visits/${visitId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'reschedule', visit_date: newDate, visit_time: newTime })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeRescheduleModal();
+                loadVisits();
+            } else {
+                alert('Reschedule failed');
+            }
+        } catch (err) {
+            alert('Error: ' + err);
+        }
+    }
+
+    async function cancelVisit(visitId) {
+        if (!confirm('Are you sure you want to cancel this visit appointment?')) return;
+        try {
+            const res = await fetch(`/api/visits/${visitId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'cancel', reason: 'Customer requested cancellation from CRM' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadVisits();
+            } else {
+                alert('Cancellation failed');
+            }
+        } catch (err) {
+            alert('Error: ' + err);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadVisits();
+        // Auto-refresh visits table every 3 seconds for realtime sync
+        setInterval(loadVisits, 3000);
+    });
+</script>
+{% endblock %}

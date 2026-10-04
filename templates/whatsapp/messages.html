@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Outbound Message Logs — ARIS WhatsApp{% endblock %}
+{% block header_title %}WhatsApp Outbound Message Logs{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- TOP HEADER / FILTER BAR -->
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-slate-900/70 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm">
+        <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="list-checks" class="w-5 h-5 text-emerald-400"></i>
+                Outbound Message Registry
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+                Audited ledger of all outbound broadcasts, test sends, and transactional template dispatches.
+            </p>
+        </div>
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <button
+                onclick="loadMessages(1)"
+                class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-2 transition"
+            >
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Refresh</span>
+            </button>
+            <a
+                href="/admin/whatsapp/test-send"
+                class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-emerald-600/25"
+            >
+                <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                <span>New Test Send</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- FILTER CONTROLS -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div>
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Status</label>
+            <select id="filterStatus" onchange="loadMessages(1)" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500">
+                <option value="">All Statuses</option>
+                <option value="ACCEPTED">ACCEPTED (Meta)</option>
+                <option value="SENT">SENT</option>
+                <option value="DELIVERED">DELIVERED</option>
+                <option value="READ">READ</option>
+                <option value="FAILED">FAILED</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Source</label>
+            <select id="filterSource" onchange="loadMessages(1)" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500">
+                <option value="">All Sources</option>
+                <option value="TEST_SEND">TEST_SEND</option>
+                <option value="CAMPAIGN">CAMPAIGN</option>
+                <option value="AGENT">AGENT</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Template</label>
+            <input
+                type="text"
+                id="filterTemplate"
+                placeholder="Filter by template name..."
+                onkeyup="debounceSearch()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500"
+            />
+        </div>
+
+        <div>
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Phone Number</label>
+            <input
+                type="text"
+                id="filterPhone"
+                placeholder="e.g. 9876543210"
+                onkeyup="debounceSearch()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+            />
+        </div>
+
+        <div>
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Campaign ID</label>
+            <input
+                type="text"
+                id="filterCampaign"
+                placeholder="cmp_..."
+                onkeyup="debounceSearch()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+            />
+        </div>
+    </div>
+
+    <!-- MESSAGES TABLE -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+                <thead class="text-[11px] uppercase bg-slate-950/80 text-slate-400 border-b border-slate-800">
+                    <tr>
+                        <th class="py-3.5 px-4 font-semibold">Outbound ID</th>
+                        <th class="py-3.5 px-4 font-semibold">Recipient</th>
+                        <th class="py-3.5 px-4 font-semibold">Template</th>
+                        <th class="py-3.5 px-4 font-semibold">Source</th>
+                        <th class="py-3.5 px-4 font-semibold">Status</th>
+                        <th class="py-3.5 px-4 font-semibold">Meta Message ID</th>
+                        <th class="py-3.5 px-4 font-semibold">Created At</th>
+                        <th class="py-3.5 px-4 font-semibold text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="messagesTableBody" class="divide-y divide-slate-800/60 font-sans">
+                    <tr>
+                        <td colspan="8" class="py-12 text-center text-slate-500">
+                            <div class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                            Loading outbound messages...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PAGINATION CONTROLS -->
+        <div class="flex items-center justify-between p-4 border-t border-slate-800 bg-slate-950/40 text-xs text-slate-400">
+            <div id="paginationInfo">Showing page 1</div>
+            <div class="flex items-center gap-2">
+                <button
+                    id="prevBtn"
+                    onclick="changePage(-1)"
+                    disabled
+                    class="px-3 py-1.5 rounded-lg bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700 text-slate-200 transition"
+                >
+                    Previous
+                </button>
+                <span id="pageBadge" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 font-mono text-slate-300">1</span>
+                <button
+                    id="nextBtn"
+                    onclick="changePage(1)"
+                    disabled
+                    class="px-3 py-1.5 rounded-lg bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700 text-slate-200 transition"
+                >
+                    Next
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let totalPages = 1;
+    let debounceTimer = null;
+
+    function debounceSearch() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => loadMessages(1), 300);
+    }
+
+    function changePage(delta) {
+        const target = currentPage + delta;
+        if (target >= 1 && target <= totalPages) {
+            loadMessages(target);
+        }
+    }
+
+    function getStatusBadge(status) {
+        const s = (status || '').toUpperCase();
+        if (s === 'READ') {
+            return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">READ</span>`;
+        } else if (s === 'DELIVERED') {
+            return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">DELIVERED</span>`;
+        } else if (s === 'SENT' || s === 'ACCEPTED') {
+            return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">${s}</span>`;
+        } else if (s === 'FAILED') {
+            return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">FAILED</span>`;
+        } else {
+            return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700 text-slate-300">${s}</span>`;
+        }
+    }
+
+    function loadMessages(page = 1) {
+        currentPage = page;
+        const status = document.getElementById('filterStatus').value;
+        const source = document.getElementById('filterSource').value;
+        const template = document.getElementById('filterTemplate').value.trim();
+        const phone = document.getElementById('filterPhone').value.trim();
+        const campaign = document.getElementById('filterCampaign').value.trim();
+
+        const params = new URLSearchParams({
+            page: currentPage,
+            limit: 20
+        });
+        if (status) params.set('status', status);
+        if (source) params.set('source', source);
+        if (template) params.set('template', template);
+        if (phone) params.set('phone', phone);
+        if (campaign) params.set('campaign_id', campaign);
+
+        fetch(`/api/admin/whatsapp/messages?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('messagesTableBody');
+                totalPages = data.pages || 1;
+
+                document.getElementById('paginationInfo').textContent = `Showing ${data.messages.length} of ${data.total} messages (Page ${data.page} of ${totalPages})`;
+                document.getElementById('pageBadge').textContent = data.page;
+                document.getElementById('prevBtn').disabled = data.page <= 1;
+                document.getElementById('nextBtn').disabled = data.page >= totalPages;
+
+                if (!data.messages || data.messages.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center text-slate-500">No outbound messages found matching the criteria.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = data.messages.map(m => {
+                    const wamid = m.meta_message_id ? `${m.meta_message_id.substring(0, 20)}...` : '<span class="text-slate-600">—</span>';
+                    const createdAt = m.created_at ? new Date(m.created_at).toLocaleString() : '—';
+                    return `
+                        <tr class="hover:bg-slate-800/30 transition">
+                            <td class="py-3 px-4 font-mono text-[11px] text-slate-400">${m.outbound_id || '—'}</td>
+                            <td class="py-3 px-4 font-mono font-medium text-slate-200">${m.phone_number || m.normalized_phone || '—'}</td>
+                            <td class="py-3 px-4 font-semibold text-emerald-400">${m.template_name || '—'}</td>
+                            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-700 text-slate-300 font-mono">${m.source || '—'}</span></td>
+                            <td class="py-3 px-4">${getStatusBadge(m.status)}</td>
+                            <td class="py-3 px-4 font-mono text-[11px] text-slate-400" title="${m.meta_message_id || ''}">${wamid}</td>
+                            <td class="py-3 px-4 text-slate-400 text-[11px]">${createdAt}</td>
+                            <td class="py-3 px-4 text-right">
+                                <a href="/admin/whatsapp/messages/${m.outbound_id}" class="text-emerald-400 hover:text-emerald-300 font-medium text-xs">
+                                    Timeline
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                lucide.createIcons();
+            })
+            .catch(err => {
+                document.getElementById('messagesTableBody').innerHTML = `
+                    <tr><td colspan="8" class="py-8 text-center text-rose-400">Failed to load messages: ${err.message}</td></tr>
+                `;
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Parse URL params for pre-filtering (e.g. ?source=TEST_SEND)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('source')) {
+            document.getElementById('filterSource').value = urlParams.get('source');
+        }
+        loadMessages(1);
+    });
+</script>
+{% endblock %}

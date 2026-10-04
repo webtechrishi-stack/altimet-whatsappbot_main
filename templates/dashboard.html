@@ -1,0 +1,738 @@
+{% extends "base.html" %}
+
+{% block title %}ARIS — Executive Dashboard{% endblock %}
+{% block header_title %}Executive Overview{% endblock %}
+
+{% block content %}
+<div class="space-y-8 max-w-7xl mx-auto">
+    <!-- META CLOUD API USAGE & FREE TIER MONITOR -->
+    <div class="glass-panel p-6 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm dark:shadow-2xl space-y-6 bg-white dark:bg-slate-900/70">
+        <!-- Control Header & Date Range Filter Bar -->
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+            <div>
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                        <i data-lucide="message-square-text" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            WhatsApp Cloud API Traffic & Meta Free Tier Monitor
+                            <span id="active-range-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                This Month
+                            </span>
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Track outbound & inbound volume, monitor Meta's 1,000 monthly free tier limit, and prevent surprise billing.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Date Filter Controls -->
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Preset Buttons -->
+                <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-950 p-1 border border-slate-200 dark:border-slate-800 text-xs">
+                    <button onclick="applyMessageFilter('today')" id="btn-preset-today" class="date-preset-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition">Today</button>
+                    <button onclick="applyMessageFilter('yesterday')" id="btn-preset-yesterday" class="date-preset-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition">Yesterday</button>
+                    <button onclick="applyMessageFilter('7d')" id="btn-preset-7d" class="date-preset-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition">7 Days</button>
+                    <button onclick="applyMessageFilter('this_month')" id="btn-preset-this_month" class="date-preset-btn px-3 py-1.5 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30 transition">This Month</button>
+                    <button onclick="applyMessageFilter('30d')" id="btn-preset-30d" class="date-preset-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition">30 Days</button>
+                    <button onclick="applyMessageFilter('all')" id="btn-preset-all" class="date-preset-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition">All Time</button>
+                </div>
+
+                <!-- Custom Range Inputs -->
+                <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+                    <span class="text-slate-500 dark:text-slate-400 text-[11px]">Range:</span>
+                    <input type="date" id="custom-start-date" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-lg px-2 py-1 text-slate-800 dark:text-slate-200 text-[11px] focus:outline-none focus:border-emerald-500">
+                    <span class="text-slate-400 text-xs">to</span>
+                    <input type="date" id="custom-end-date" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-lg px-2 py-1 text-slate-800 dark:text-slate-200 text-[11px] focus:outline-none focus:border-emerald-500">
+                    <button onclick="applyCustomDateRange()" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white dark:text-slate-950 font-bold text-[11px] shadow-sm transition">
+                        Apply
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards Grid (4 Cards) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Outbound Sent -->
+            <div class="bg-slate-50 dark:bg-slate-950/70 p-4 rounded-xl border border-slate-200/90 dark:border-slate-800/90 relative overflow-hidden shadow-sm">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">Outbound Sent</span>
+                    <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">Meta API</span>
+                </div>
+                <div class="mt-3 flex items-baseline gap-2">
+                    <span id="meta-kpi-outbound" class="text-2xl font-black text-slate-900 dark:text-white">--</span>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400">messages</span>
+                </div>
+                <div class="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                    <span>Delivered: <strong id="meta-outbound-delivered" class="text-slate-800 dark:text-slate-200">0</strong></span>
+                    <span>Read: <strong id="meta-outbound-read" class="text-blue-600 dark:text-blue-400 font-semibold">0</strong></span>
+                    <span>Failed: <strong id="meta-outbound-failed" class="text-rose-600 dark:text-rose-400 font-semibold">0</strong></span>
+                </div>
+            </div>
+
+            <!-- Inbound Received -->
+            <div class="bg-slate-50 dark:bg-slate-950/70 p-4 rounded-xl border border-slate-200/90 dark:border-slate-800/90 relative overflow-hidden shadow-sm">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">Inbound Received</span>
+                    <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold">User Webhooks</span>
+                </div>
+                <div class="mt-3 flex items-baseline gap-2">
+                    <span id="meta-kpi-inbound" class="text-2xl font-black text-slate-900 dark:text-white">--</span>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400">messages</span>
+                </div>
+                <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800/80">Customer replies & inquiries</p>
+            </div>
+
+            <!-- Total Message Volume -->
+            <div class="bg-slate-50 dark:bg-slate-950/70 p-4 rounded-xl border border-slate-200/90 dark:border-slate-800/90 relative overflow-hidden shadow-sm">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">Total Traffic Volume</span>
+                    <i data-lucide="activity" class="w-3.5 h-3.5 text-slate-400"></i>
+                </div>
+                <div class="mt-3 flex items-baseline gap-2">
+                    <span id="meta-kpi-volume" class="text-2xl font-black text-slate-900 dark:text-white">--</span>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400">total msgs</span>
+                </div>
+                <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800/80">Inbound + Outbound exchange</p>
+            </div>
+
+            <!-- Unique Contacts -->
+            <div class="bg-slate-50 dark:bg-slate-950/70 p-4 rounded-xl border border-slate-200/90 dark:border-slate-800/90 relative overflow-hidden shadow-sm">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">Active Contacts</span>
+                    <i data-lucide="users" class="w-3.5 h-3.5 text-purple-500 dark:text-purple-400"></i>
+                </div>
+                <div class="mt-3 flex items-baseline gap-2">
+                    <span id="meta-kpi-contacts" class="text-2xl font-black text-slate-900 dark:text-white">--</span>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400">unique users</span>
+                </div>
+                <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800/80">Distinct WhatsApp numbers</p>
+            </div>
+        </div>
+
+        <!-- Meta Free Tier Monthly Quota & Billing Risk Section -->
+        <div class="p-5 rounded-xl bg-slate-50/90 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i>
+                    <h3 class="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">
+                        Meta 1,000 Free Service Conversations Monthly Quota (<span id="meta-cycle-name">Current Month</span>)
+                    </h3>
+                </div>
+                <div id="meta-tier-status-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 w-fit">
+                    Within Free Tier
+                </div>
+            </div>
+
+            <!-- Visual Progress Bar -->
+            <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-mono">
+                    <span class="text-slate-500 dark:text-slate-400">
+                        Used: <strong id="meta-quota-used" class="text-slate-900 dark:text-white">0</strong> / 1,000 free conversations
+                    </span>
+                    <span id="meta-quota-remaining" class="text-emerald-600 dark:text-emerald-400 font-bold">
+                        1,000 remaining
+                    </span>
+                </div>
+                <div class="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
+                    <div id="meta-quota-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+                <div class="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 shadow-sm">
+                    <span class="text-slate-500 dark:text-slate-400 block text-[11px]">Estimated Meta Bill</span>
+                    <span id="meta-estimated-bill" class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">₹0.00</span>
+                    <span class="text-[10px] text-slate-400 dark:text-slate-500 block">100% Free Tier Covered</span>
+                </div>
+                <div class="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 shadow-sm">
+                    <span class="text-slate-500 dark:text-slate-400 block text-[11px]">Outbound Whitelist</span>
+                    <span class="font-bold text-slate-900 dark:text-white text-sm">Strict Enforced</span>
+                    <span class="text-[10px] text-slate-400 dark:text-slate-500 block">Dummy numbers blocked</span>
+                </div>
+                <div class="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 shadow-sm">
+                    <span class="text-slate-500 dark:text-slate-400 block text-[11px]">AI Bot-Loop Circuit Breaker</span>
+                    <span class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">Armed & Active</span>
+                    <span class="text-[10px] text-slate-400 dark:text-slate-500 block">0 ping-pong risk</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inbound vs Outbound Traffic Trend Chart -->
+        <div class="space-y-3 pt-2">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Traffic Breakdown (Inbound vs Outbound)</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Daily message delivery volume across the selected date range</p>
+                </div>
+                <div class="flex items-center gap-4 text-xs font-medium">
+                    <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span> Outbound Sent
+                    </span>
+                    <span class="flex items-center gap-1.5 text-sky-600 dark:text-blue-400">
+                        <span class="w-3 h-3 rounded bg-sky-500 dark:bg-blue-500 inline-block"></span> Inbound Received
+                    </span>
+                </div>
+            </div>
+            <div class="h-56 relative bg-slate-50/60 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                <canvas id="trafficChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- METRICS CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Total Leads -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider uppercase">Total Leads</span>
+                <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-baseline gap-2">
+                <span id="metric-total-leads" class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">--</span>
+                <span class="text-xs text-emerald-600 dark:text-emerald-400 flex items-center font-semibold">Inbound Live</span>
+            </div>
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Unique WhatsApp Prospects</p>
+        </div>
+
+        <!-- Hot Leads -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider uppercase">Hot Leads (Score 60+)</span>
+                <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/20">
+                    <i data-lucide="flame" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-baseline gap-2">
+                <span id="metric-hot-leads" class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">--</span>
+                <span class="text-xs text-amber-600 dark:text-amber-400 flex items-center font-semibold">High Intent</span>
+            </div>
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Ready for Site Visit or Close</p>
+        </div>
+
+        <!-- Scheduled Visits -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider uppercase">Site Visits Booked</span>
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                    <i data-lucide="calendar-check" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-baseline gap-2">
+                <span id="metric-visits" class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">--</span>
+                <span id="metric-conversion-rate" class="text-xs text-emerald-600 dark:text-emerald-400 flex items-center font-semibold">--% Conv.</span>
+            </div>
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Appointments on Calendar</p>
+        </div>
+
+        <!-- Active Properties -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider uppercase">Active Properties</span>
+                <div class="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-500/20">
+                    <i data-lucide="building" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-baseline gap-2">
+                <span id="metric-properties" class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">--</span>
+                <span class="text-xs text-teal-600 dark:text-teal-400 flex items-center font-semibold">Nagpur & Pune</span>
+            </div>
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Curated Inventory Listings</p>
+        </div>
+    </div>
+
+    <!-- CHARTS SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Daily Activity Line Chart (2 Cols) -->
+        <div class="lg:col-span-2 glass-panel p-6 rounded-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">Daily Inbound Activity</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Incoming messages and scheduled visits over the last 7 days</p>
+                </div>
+                <span class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 font-medium">7 Days Trend</span>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Sales Stage Pipeline Funnel (1 Col) -->
+        <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">Sales Pipeline Funnel</h3>
+                    <i data-lucide="filter" class="w-4 h-4 text-slate-400"></i>
+                </div>
+                <div class="h-48 relative flex items-center justify-center">
+                    <canvas id="pipelineChart"></canvas>
+                </div>
+            </div>
+            <div id="pipeline-legend" class="mt-4 space-y-1.5 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-3">
+                <!-- Legend dynamically inserted -->
+            </div>
+        </div>
+    </div>
+
+    <!-- QUICK ACTIONS & RECENT EVENTS -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Quick Action Shortcuts -->
+        <div class="glass-panel p-6 rounded-2xl space-y-4">
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">Quick Actions</h3>
+            <div class="space-y-2.5">
+                <a href="/dashboard/conversations" class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 transition text-sm text-slate-800 dark:text-slate-200 shadow-sm">
+                    <span class="flex items-center gap-3 font-medium">
+                        <i data-lucide="message-square" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i>
+                        Live WhatsApp Inbox
+                    </span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                </a>
+                <a href="/dashboard/leads?stage=VISIT_BOOKED" class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 transition text-sm text-slate-800 dark:text-slate-200 shadow-sm">
+                    <span class="flex items-center gap-3 font-medium">
+                        <i data-lucide="calendar" class="w-4 h-4 text-blue-600 dark:text-blue-400"></i>
+                        View Booked Visits
+                    </span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                </a>
+                <button onclick="triggerDripQueue()" class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 transition text-sm text-slate-800 dark:text-slate-200 shadow-sm">
+                    <span class="flex items-center gap-3 font-medium">
+                        <i data-lucide="send" class="w-4 h-4 text-purple-600 dark:text-purple-400"></i>
+                        Run Nurture Follow-ups Now
+                    </span>
+                    <i data-lucide="play" class="w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                </button>
+                <a href="/dashboard/properties" class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 transition text-sm text-slate-800 dark:text-slate-200 shadow-sm">
+                    <span class="flex items-center gap-3 font-medium">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-teal-600 dark:text-teal-400"></i>
+                        Add New Property
+                    </span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Audit Events Feed (2 Cols) -->
+        <div class="lg:col-span-2 glass-panel p-6 rounded-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white">Live Event Audit Stream</h3>
+                <span class="text-xs text-slate-500 dark:text-slate-400">Real-time interactions</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">
+                            <th class="py-2.5 font-semibold">Event</th>
+                            <th class="py-2.5 font-semibold">Contact / Phone</th>
+                            <th class="py-2.5 font-semibold">Details</th>
+                            <th class="py-2.5 font-semibold text-right">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-events-body" class="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+                        <tr>
+                            <td colspan="4" class="py-6 text-center text-slate-400 dark:text-slate-500">Loading events...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let activityChartInstance = null;
+    let pipelineChartInstance = null;
+    let trafficChartInstance = null;
+    let currentMessagePreset = 'this_month';
+
+    function getThemeChartColors() {
+        const isDark = document.documentElement.classList.contains('dark');
+        return {
+            isDark: isDark,
+            gridColor: isDark ? 'rgba(51, 65, 85, 0.3)' : 'rgba(226, 232, 240, 0.8)',
+            tickColor: isDark ? '#94a3b8' : '#64748b',
+            textColor: isDark ? '#cbd5e1' : '#475569',
+            tooltipBg: isDark ? '#0f172a' : '#ffffff',
+            tooltipTitle: isDark ? '#f8fafc' : '#0f172a',
+            tooltipBody: isDark ? '#cbd5e1' : '#334155',
+            tooltipBorder: isDark ? '#334155' : '#cbd5e1',
+        };
+    }
+
+    async function loadOverview() {
+        try {
+            const res = await fetch('/api/overview');
+            const data = await res.json();
+
+            // Set Metrics
+            document.getElementById('metric-total-leads').innerText = data.metrics.total_leads || 0;
+            document.getElementById('metric-hot-leads').innerText = data.metrics.hot_leads || 0;
+            document.getElementById('metric-visits').innerText = data.metrics.scheduled_visits || 0;
+            document.getElementById('metric-conversion-rate').innerText = (data.metrics.conversion_rate || '0%') + ' Conv.';
+            document.getElementById('metric-properties').innerText = data.metrics.total_properties || 0;
+
+            // Render Charts
+            renderActivityChart(data.daily_activity || []);
+            renderPipelineChart(data.stage_distribution || {});
+
+            // Render Events Table
+            renderEventsTable(data.recent_events || []);
+
+        } catch (e) {
+            console.error('Error loading overview:', e);
+        }
+    }
+
+    function renderActivityChart(activity) {
+        const canvas = document.getElementById('activityChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const labels = activity.map(a => a._id || '');
+        const messages = activity.map(a => a.messages || a.total || 0);
+        const visits = activity.map(a => a.visits || 0);
+        const tc = getThemeChartColors();
+
+        if (activityChartInstance) {
+            activityChartInstance.data.labels = labels.length ? labels : ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Today'];
+            activityChartInstance.data.datasets[0].data = messages.length ? messages : [3, 7, 5, 12, 8, 14, 18];
+            activityChartInstance.data.datasets[1].data = visits.length ? visits : [0, 1, 0, 2, 1, 3, 2];
+            activityChartInstance.update('none');
+            return;
+        }
+
+        activityChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels.length ? labels : ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Today'],
+                datasets: [
+                    {
+                        label: 'Messages',
+                        data: messages.length ? messages : [3, 7, 5, 12, 8, 14, 18],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Visits Booked',
+                        data: visits.length ? visits : [0, 1, 0, 2, 1, 3, 2],
+                        borderColor: '#38bdf8',
+                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: tc.textColor, font: { family: 'Plus Jakarta Sans' } } },
+                    tooltip: {
+                        backgroundColor: tc.tooltipBg,
+                        titleColor: tc.tooltipTitle,
+                        bodyColor: tc.tooltipBody,
+                        borderColor: tc.tooltipBorder,
+                        borderWidth: 1,
+                        padding: 10
+                    }
+                },
+                scales: {
+                    x: { grid: { color: tc.gridColor }, ticks: { color: tc.tickColor } },
+                    y: { grid: { color: tc.gridColor }, ticks: { color: tc.tickColor }, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function renderPipelineChart(dist) {
+        const canvas = document.getElementById('pipelineChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const keys = Object.keys(dist).length ? Object.keys(dist) : ['NEW', 'QUALIFYING', 'SHORTLISTED', 'VISIT_BOOKED'];
+        const values = Object.keys(dist).length ? Object.values(dist) : [4, 3, 2, 2];
+
+        if (pipelineChartInstance) {
+            pipelineChartInstance.data.labels = keys;
+            pipelineChartInstance.data.datasets[0].data = values;
+            pipelineChartInstance.update('none');
+        } else {
+            pipelineChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: keys,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // Populate legend
+        const legend = document.getElementById('pipeline-legend');
+        if (legend) {
+            legend.innerHTML = keys.map((k, i) => `
+                <div class="flex items-center justify-between">
+                    <span class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][i % 5]}"></span>
+                        ${k}
+                    </span>
+                    <span class="font-semibold text-slate-800 dark:text-slate-200">${values[i]}</span>
+                </div>
+            `).join('');
+        }
+    }
+
+    function renderEventsTable(events) {
+        const tbody = document.getElementById('recent-events-body');
+        if (!tbody) return;
+        if (!events.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-slate-400 dark:text-slate-500">No events logged yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = events.map(e => {
+            const timeStr = e.timestamp ? new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently';
+            return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
+                    <td class="py-3 font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        ${e.event_type.replace(/_/g, ' ').toUpperCase()}
+                    </td>
+                    <td class="py-3 font-mono text-slate-600 dark:text-slate-400">+${e.wa_id || '--'}</td>
+                    <td class="py-3 text-slate-600 dark:text-slate-400">${e.metadata ? JSON.stringify(e.metadata).slice(0, 35) : '--'}</td>
+                    <td class="py-3 text-right text-slate-400 dark:text-slate-500 font-mono">${timeStr}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function triggerDripQueue() {
+        try {
+            const res = await fetch('/api/followups/trigger', { method: 'POST' });
+            const data = await res.json();
+            alert(`Nurture Follow-ups processed! Sent ${data.sent_count || 0} scheduled messages.`);
+            loadOverview();
+        } catch (e) {
+            alert('Error running follow-up queue: ' + e);
+        }
+    }
+
+    async function loadMessageAnalytics(preset = 'this_month', startDate = '', endDate = '') {
+        try {
+            let url = `/api/dashboard/message-analytics?preset=${encodeURIComponent(preset)}`;
+            if (startDate && endDate) {
+                url += `&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+            }
+            const res = await fetch(url);
+            const data = await res.json();
+
+            // Update range badge
+            const badge = document.getElementById('active-range-badge');
+            if (badge) badge.innerText = data.filter.label || 'Filtered';
+
+            // Update KPI cards
+            document.getElementById('meta-kpi-outbound').innerText = data.kpis.total_outbound || 0;
+            document.getElementById('meta-kpi-inbound').innerText = data.kpis.total_inbound || 0;
+            document.getElementById('meta-kpi-volume').innerText = data.kpis.total_volume || 0;
+            document.getElementById('meta-kpi-contacts').innerText = data.kpis.unique_contacts || 0;
+
+            document.getElementById('meta-outbound-delivered').innerText = data.kpis.delivered || 0;
+            document.getElementById('meta-outbound-read').innerText = data.kpis.read || 0;
+            document.getElementById('meta-outbound-failed').innerText = data.kpis.failed || 0;
+
+            // Meta Free Tier & Billing
+            const m = data.meta_free_tier;
+            document.getElementById('meta-cycle-name').innerText = m.month_name || 'This Month';
+            document.getElementById('meta-quota-used').innerText = m.used || 0;
+            document.getElementById('meta-quota-remaining').innerText = `${m.remaining || 0} free remaining`;
+            document.getElementById('meta-estimated-bill').innerText = `₹${(m.estimated_bill_inr || 0).toFixed(2)}`;
+
+            const progressBar = document.getElementById('meta-quota-bar');
+            const pct = Math.min(100, Math.max(0, m.percentage || 0));
+            progressBar.style.width = pct + '%';
+
+            const statusBadge = document.getElementById('meta-tier-status-badge');
+            if (m.status === 'EXCEEDED') {
+                statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/15 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30';
+                statusBadge.innerText = '🚨 Free Tier Exceeded';
+                progressBar.className = 'h-full rounded-full bg-rose-500 transition-all duration-500';
+            } else if (m.status === 'WARNING_NEARING_LIMIT') {
+                statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30';
+                statusBadge.innerText = '⚠️ Nearing Limit (70%+ Used)';
+                progressBar.className = 'h-full rounded-full bg-amber-500 transition-all duration-500';
+            } else {
+                statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30';
+                statusBadge.innerText = '✅ Within 1,000 Free Limit';
+                progressBar.className = 'h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500';
+            }
+
+            // Render Traffic Chart
+            renderTrafficChart(data.timeline || []);
+
+        } catch (err) {
+            console.error('Failed to load message analytics:', err);
+        }
+    }
+
+    function applyMessageFilter(preset) {
+        currentMessagePreset = preset;
+        document.querySelectorAll('.date-preset-btn').forEach(b => {
+            b.className = 'date-preset-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition';
+        });
+        const activeBtn = document.getElementById(`btn-preset-${preset}`);
+        if (activeBtn) {
+            activeBtn.className = 'date-preset-btn px-3 py-1.5 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/30 transition shadow-sm';
+        }
+        // Clear custom inputs
+        const s = document.getElementById('custom-start-date');
+        const e = document.getElementById('custom-end-date');
+        if (s) s.value = '';
+        if (e) e.value = '';
+
+        loadMessageAnalytics(preset);
+    }
+
+    function applyCustomDateRange() {
+        const start = document.getElementById('custom-start-date').value;
+        const end = document.getElementById('custom-end-date').value;
+        if (!start || !end) {
+            alert('Please select both start and end dates.');
+            return;
+        }
+        document.querySelectorAll('.date-preset-btn').forEach(b => {
+            b.className = 'date-preset-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition';
+        });
+        loadMessageAnalytics('custom', start, end);
+    }
+
+    function renderTrafficChart(timeline) {
+        const canvas = document.getElementById('trafficChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const labels = timeline.map(t => t.date);
+        const outboundData = timeline.map(t => t.outbound);
+        const inboundData = timeline.map(t => t.inbound);
+        const tc = getThemeChartColors();
+
+        if (trafficChartInstance) {
+            trafficChartInstance.data.labels = labels.length ? labels : ['No Traffic in Range'];
+            trafficChartInstance.data.datasets[0].data = outboundData.length ? outboundData : [0];
+            trafficChartInstance.data.datasets[1].data = inboundData.length ? inboundData : [0];
+            trafficChartInstance.update();
+            return;
+        }
+
+        trafficChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels.length ? labels : ['No Traffic in Range'],
+                datasets: [
+                    {
+                        label: 'Outbound Sent',
+                        data: outboundData.length ? outboundData : [0],
+                        backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                        borderColor: '#10b981',
+                        borderRadius: 6,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Inbound Received',
+                        data: inboundData.length ? inboundData : [0],
+                        backgroundColor: 'rgba(56, 189, 248, 0.85)',
+                        borderColor: '#38bdf8',
+                        borderRadius: 6,
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: tc.tooltipBg,
+                        titleColor: tc.tooltipTitle,
+                        bodyColor: tc.tooltipBody,
+                        borderColor: tc.tooltipBorder,
+                        borderWidth: 1,
+                        padding: 10
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: tc.tickColor, font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { color: tc.gridColor },
+                        ticks: { color: tc.tickColor, font: { size: 10 }, stepSize: 1 },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // Adapt Chart colors live on theme switch
+    window.addEventListener('themechange', () => {
+        const tc = getThemeChartColors();
+        if (activityChartInstance) {
+            activityChartInstance.options.scales.x.grid.color = tc.gridColor;
+            activityChartInstance.options.scales.x.ticks.color = tc.tickColor;
+            activityChartInstance.options.scales.y.grid.color = tc.gridColor;
+            activityChartInstance.options.scales.y.ticks.color = tc.tickColor;
+            activityChartInstance.options.plugins.legend.labels.color = tc.textColor;
+            activityChartInstance.options.plugins.tooltip.backgroundColor = tc.tooltipBg;
+            activityChartInstance.options.plugins.tooltip.titleColor = tc.tooltipTitle;
+            activityChartInstance.options.plugins.tooltip.bodyColor = tc.tooltipBody;
+            activityChartInstance.options.plugins.tooltip.borderColor = tc.tooltipBorder;
+            activityChartInstance.update();
+        }
+        if (trafficChartInstance) {
+            trafficChartInstance.options.scales.y.grid.color = tc.gridColor;
+            trafficChartInstance.options.scales.x.ticks.color = tc.tickColor;
+            trafficChartInstance.options.scales.y.ticks.color = tc.tickColor;
+            trafficChartInstance.options.plugins.tooltip.backgroundColor = tc.tooltipBg;
+            trafficChartInstance.options.plugins.tooltip.titleColor = tc.tooltipTitle;
+            trafficChartInstance.options.plugins.tooltip.bodyColor = tc.tooltipBody;
+            trafficChartInstance.options.plugins.tooltip.borderColor = tc.tooltipBorder;
+            trafficChartInstance.update();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadOverview();
+        loadMessageAnalytics('this_month');
+        // Auto-refresh overview and analytics
+        setInterval(loadOverview, 4000);
+        setInterval(() => {
+            const start = document.getElementById('custom-start-date')?.value;
+            const end = document.getElementById('custom-end-date')?.value;
+            if (currentMessagePreset !== 'custom') {
+                loadMessageAnalytics(currentMessagePreset);
+            } else if (start && end) {
+                loadMessageAnalytics('custom', start, end);
+            }
+        }, 8000);
+    });
+</script>
+{% endblock %}

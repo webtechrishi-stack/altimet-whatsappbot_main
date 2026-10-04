@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}ARIS — Chunk Inspector ({{ doc.filename }}){% endblock %}
+{% block header_title %}Document Chunks & Vector Metadata{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- BACK NAV & HEADER -->
+    <div class="flex items-center justify-between">
+        <a href="/dashboard/knowledge" class="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-emerald-400 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>Back to Knowledge Documents</span>
+        </a>
+        <div class="space-x-2">
+            <button onclick="reindexCurrentDoc()" class="px-3.5 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-semibold inline-flex items-center gap-1.5">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Reindex
+            </button>
+        </div>
+    </div>
+
+    <!-- DOCUMENT METADATA CARD -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+            <div>
+                <h3 class="text-lg font-extrabold text-white">{{ doc.title or doc.filename }}</h3>
+                <p class="text-xs text-slate-400 font-mono mt-0.5">{{ doc.filename }} • {{ doc.mime_type }}</p>
+            </div>
+            <div>
+                <span class="px-3 py-1 rounded-full text-xs font-bold {% if doc.status == 'ready' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/30{% else %}bg-amber-500/10 text-amber-400 border border-amber-500/30{% endif %}">
+                    {{ (doc.status or 'ready')|upper }}
+                </span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div>
+                <span class="text-slate-500 uppercase tracking-wider font-semibold text-[10px]">Property Link</span>
+                <p class="text-slate-200 font-bold mt-1">{{ doc.property_id or 'General / None' }}</p>
+            </div>
+            <div>
+                <span class="text-slate-500 uppercase tracking-wider font-semibold text-[10px]">Document Type</span>
+                <p class="text-slate-200 font-bold mt-1 capitalize">{{ (doc.document_type or 'brochure')|replace('_', ' ') }}</p>
+            </div>
+            <div>
+                <span class="text-slate-500 uppercase tracking-wider font-semibold text-[10px]">Total Chunks</span>
+                <p class="text-emerald-400 font-mono font-bold mt-1">{{ doc.chunk_count or 0 }} Chunks</p>
+            </div>
+            <div>
+                <span class="text-slate-500 uppercase tracking-wider font-semibold text-[10px]">Embedding Dimension</span>
+                <p class="text-purple-400 font-mono font-bold mt-1">{{ doc.embedding_dimension or 384 }} Dimensions</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHUNKS LIST -->
+    <div class="space-y-3">
+        <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white uppercase tracking-wider">Semantic Knowledge Chunks</h4>
+            <span class="text-xs text-slate-500" id="chunks-count-label">Loading...</span>
+        </div>
+
+        <div id="chunks-container" class="space-y-3">
+            <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-xs">
+                Loading chunk segments...
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const docId = "{{ doc.id }}";
+
+async function loadChunks() {
+    try {
+        const res = await fetch(`/api/knowledge/documents/${docId}/chunks`);
+        const data = await res.json();
+        const chunks = data.chunks || [];
+
+        document.getElementById('chunks-count-label').innerText = `${chunks.length} segments`;
+
+        const container = document.getElementById('chunks-container');
+        if (!chunks.length) {
+            container.innerHTML = `<div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-xs">No chunks found for this document. Try reindexing.</div>`;
+            return;
+        }
+
+        container.innerHTML = chunks.map(c => `
+            <div class="bg-slate-900/70 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-lg transition">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3 mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-bold text-xs">Chunk #${c.chunk_index + 1}</span>
+                        ${c.page_number ? `<span class="text-xs text-slate-400 font-medium">Page ${c.page_number}</span>` : ''}
+                        ${c.section ? `<span class="text-xs text-slate-300 font-semibold">• ${c.section}</span>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+                        <span>${c.token_count || 0} tokens</span>
+                        <span>•</span>
+                        <span class="text-purple-400 font-semibold">${c.embedding_dimension || 384}d vector indexed</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/60 rounded-xl p-4 border border-slate-800/80 font-mono text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+                    ${c.content}
+                </div>
+            </div>
+        `).join('');
+    } catch (ex) {
+        console.error("Failed to load chunks", ex);
+    }
+}
+
+async function reindexCurrentDoc() {
+    if (!confirm("Reindex this document now?")) return;
+    await fetch(`/api/knowledge/documents/${docId}/reindex`, { method: 'POST' });
+    location.reload();
+}
+
+loadChunks();
+</script>
+{% endblock %}

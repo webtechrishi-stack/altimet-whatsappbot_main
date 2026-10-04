@@ -1,0 +1,752 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Campaign — {{ campaign.title }}{% endblock %}
+{% block header_title %}Edit WhatsApp Broadcast Campaign{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- NAVIGATION BACK -->
+    <div>
+        <a href="/admin/whatsapp/campaigns/{{ campaign.campaign_id }}" class="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>Back to Campaign Dashboard</span>
+        </a>
+    </div>
+
+    <!-- MAIN FORM CONTAINER -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm space-y-6">
+        <div class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i data-lucide="edit-3" class="w-4 h-4 text-teal-400"></i>
+                    Edit Campaign Configuration
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">
+                    Modify targeting parameters, WhatsApp template, or adjust selected leads before dispatch.
+                </p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full text-xs font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                    ID: {{ campaign.campaign_id }}
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold {% if campaign.status == 'DRAFT' %}bg-slate-700 text-slate-300{% elif campaign.status == 'READY' %}bg-sky-500/20 text-sky-400 border border-sky-500/30{% elif campaign.status == 'PAUSED' %}bg-amber-500/20 text-amber-400 border border-amber-500/30{% else %}bg-emerald-500/20 text-emerald-400{% endif %}">
+                    {{ campaign.status }}
+                </span>
+            </div>
+        </div>
+
+        <form id="editCampaignForm" onsubmit="event.preventDefault(); submitUpdateCampaign();" class="space-y-6">
+
+            <!-- Title & Description -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                        Campaign Title <span class="text-rose-400">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        id="campTitle"
+                        required
+                        value="{{ campaign.title }}"
+                        placeholder="e.g. Nagpur Festive 2BHK Outreach"
+                        class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500 font-medium"
+                    />
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                        Campaign Description / Objective
+                    </label>
+                    <textarea
+                        id="campDesc"
+                        rows="2"
+                        placeholder="Optional internal notes on target persona, project promotion, and campaign goals..."
+                        class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-teal-500"
+                    >{{ campaign.description or '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Template Selector & Tags -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                        WhatsApp Template <span class="text-rose-400">*</span>
+                    </label>
+                    <select
+                        id="campTemplate"
+                        required
+                        class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500"
+                    >
+                        {% for t in templates %}
+                        <option value="{{ t.name }}" data-lang="{{ t.language_code }}" {% if t.name == campaign.template_name %}selected{% endif %}>
+                            {{ t.name }} ({{ t.language_code }}) — {{ t.category }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                        Tags / Labels
+                    </label>
+                    <input
+                        type="text"
+                        id="campTags"
+                        value="{{ (campaign.tags or [])|join(', ') }}"
+                        placeholder="festive, investors, 2bhk"
+                        class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-xs focus:outline-none focus:border-teal-500"
+                    />
+                </div>
+            </div>
+
+            <!-- Delivery Window, Rate Limiting & Scheduling Settings -->
+            <div class="bg-slate-950/50 border border-slate-800 rounded-xl p-4 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="clock" class="w-4 h-4 text-teal-400"></i>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-200">Delivery Rules & Dispatch Schedule</h4>
+                    </div>
+                    <span class="text-[11px] text-slate-400">Enforces TRAI/Meta guidelines and throughput safety</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Delivery Window Start -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                            Active Hours Start (IST)
+                        </label>
+                        <input
+                            type="time"
+                            id="campDeliveryStart"
+                            value="{{ campaign.delivery_window_start or '09:00' }}"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500"
+                        />
+                        <span class="text-[10px] text-slate-500 mt-1 block">Default 09:00 AM IST</span>
+                    </div>
+
+                    <!-- Delivery Window End -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                            Active Hours End (IST)
+                        </label>
+                        <input
+                            type="time"
+                            id="campDeliveryEnd"
+                            value="{{ campaign.delivery_window_end or '21:00' }}"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500"
+                        />
+                        <span class="text-[10px] text-slate-500 mt-1 block">Default 09:00 PM IST (TRAI cap)</span>
+                    </div>
+
+                    <!-- Priority -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                            Priority Level
+                        </label>
+                        <select
+                            id="campPriority"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500"
+                        >
+                            <option value="1" {% if campaign.priority == 1 %}selected{% endif %}>High Priority (1)</option>
+                            <option value="2" {% if not campaign.priority or campaign.priority == 2 %}selected{% endif %}>Normal Priority (2)</option>
+                            <option value="3" {% if campaign.priority == 3 %}selected{% endif %}>Low Priority (3)</option>
+                        </select>
+                        <span class="text-[10px] text-slate-500 mt-1 block">Worker queue prioritization</span>
+                    </div>
+
+                    <!-- Schedule Date & Time -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                            Scheduled Dispatch
+                        </label>
+                        <input
+                            type="datetime-local"
+                            id="campScheduleTime"
+                            value="{% if campaign.scheduled_at %}{{ campaign.scheduled_at.strftime('%Y-%m-%dT%H:%M') if campaign.scheduled_at.strftime is defined else campaign.scheduled_at[:16] }}{% endif %}"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500"
+                        />
+                        <span class="text-[10px] text-slate-500 mt-1 block">Scheduled launch time</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AUDIENCE SOURCE TABS -->
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-5 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800/80 pb-3 flex-wrap gap-2">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                            <i data-lucide="users" class="w-4 h-4 text-teal-400"></i>
+                            Audience Source & Targeting
+                        </h4>
+                        <span class="text-[11px] text-slate-400">Choose how recipients are selected for this campaign</span>
+                    </div>
+
+                    <!-- Mode Toggle Buttons -->
+                    <div class="inline-flex rounded-xl bg-slate-900 p-1 border border-slate-800 text-xs">
+                        <button
+                            type="button"
+                            id="tabBtnFilter"
+                            onclick="switchAudienceMode('FILTER')"
+                            class="px-3.5 py-1.5 rounded-lg font-medium transition text-white bg-teal-600 flex items-center gap-1.5"
+                        >
+                            <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                            <span>Filter Criteria</span>
+                        </button>
+                        <button
+                            type="button"
+                            id="tabBtnSelect"
+                            onclick="switchAudienceMode('SELECTED_LEADS')"
+                            class="px-3.5 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5"
+                        >
+                            <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
+                            <span>Select Leads</span>
+                        </button>
+                        <button
+                            type="button"
+                            id="tabBtnFile"
+                            onclick="switchAudienceMode('FILE_UPLOAD')"
+                            class="px-3.5 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5"
+                        >
+                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                            <span>Import Excel/CSV</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 1: FILTER CRITERIA -->
+                <div id="sectionFilter" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- City -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Target City</label>
+                            <select id="filterCity" onchange="previewAudience()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500">
+                                <option value="" {% if not campaign.target_city %}selected{% endif %}>All Cities</option>
+                                <option value="Nagpur" {% if campaign.target_city == 'Nagpur' %}selected{% endif %}>Nagpur</option>
+                                <option value="Pune" {% if campaign.target_city == 'Pune' %}selected{% endif %}>Pune</option>
+                                <option value="Mumbai" {% if campaign.target_city == 'Mumbai' %}selected{% endif %}>Mumbai</option>
+                            </select>
+                        </div>
+
+                        <!-- Stage -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Sales Stage</label>
+                            <select id="filterStage" onchange="previewAudience()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500">
+                                <option value="ALL" {% if not campaign.target_stage or campaign.target_stage == 'ALL' %}selected{% endif %}>All Stages</option>
+                                <option value="NEW" {% if campaign.target_stage == 'NEW' %}selected{% endif %}>NEW</option>
+                                <option value="CONTACTED" {% if campaign.target_stage == 'CONTACTED' %}selected{% endif %}>CONTACTED</option>
+                                <option value="QUALIFIED" {% if campaign.target_stage == 'QUALIFIED' %}selected{% endif %}>QUALIFIED</option>
+                                <option value="VISIT_SCHEDULED" {% if campaign.target_stage == 'VISIT_SCHEDULED' %}selected{% endif %}>VISIT_SCHEDULED</option>
+                                <option value="PROPERTY_SHORTLISTED" {% if campaign.target_stage == 'PROPERTY_SHORTLISTED' %}selected{% endif %}>PROPERTY_SHORTLISTED</option>
+                                <option value="NEGOTIATION" {% if campaign.target_stage == 'NEGOTIATION' %}selected{% endif %}>NEGOTIATION</option>
+                            </select>
+                        </div>
+
+                        <!-- BHK -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">BHK Preference</label>
+                            <select id="filterBhk" onchange="previewAudience()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500">
+                                <option value="" {% if not campaign.bhk_filter %}selected{% endif %}>All BHKs</option>
+                                <option value="1BHK" {% if campaign.bhk_filter == '1BHK' %}selected{% endif %}>1 BHK</option>
+                                <option value="2BHK" {% if campaign.bhk_filter == '2BHK' %}selected{% endif %}>2 BHK</option>
+                                <option value="3BHK" {% if campaign.bhk_filter == '3BHK' %}selected{% endif %}>3 BHK</option>
+                                <option value="4BHK" {% if campaign.bhk_filter == '4BHK' %}selected{% endif %}>4+ BHK / Villa</option>
+                            </select>
+                        </div>
+
+                        <!-- Min Lead Score -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Min Lead Score</label>
+                            <input
+                                type="number"
+                                id="filterScore"
+                                min="0"
+                                max="100"
+                                value="{{ campaign.min_lead_score or 0 }}"
+                                oninput="previewAudience()"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: SELECT LEADS INTERACTIVE TABLE -->
+                <div id="sectionSelectLeads" class="space-y-3 hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <span id="selectedCountBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-teal-500/20 text-teal-400 border border-teal-500/30">
+                                0 Leads Selected
+                            </span>
+                            <button
+                                type="button"
+                                onclick="selectAllLeads(true)"
+                                class="text-xs text-teal-400 hover:text-teal-300 font-semibold"
+                            >
+                                Select All
+                            </button>
+                            <span class="text-slate-600">&bull;</span>
+                            <button
+                                type="button"
+                                onclick="selectAllLeads(false)"
+                                class="text-xs text-slate-400 hover:text-slate-300 font-semibold"
+                            >
+                                Clear All
+                            </button>
+                        </div>
+                        <div class="w-full sm:w-64">
+                            <input
+                                type="text"
+                                id="leadSearchInput"
+                                oninput="filterLeadsTable()"
+                                placeholder="Search by name, phone, BHK..."
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none focus:border-teal-500"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Leads Selector Scrollable Table -->
+                    <div class="max-h-80 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="text-[11px] uppercase bg-slate-900/90 text-slate-400 sticky top-0 border-b border-slate-800">
+                                <tr>
+                                    <th class="py-2.5 px-3 w-10">
+                                        <input
+                                            type="checkbox"
+                                            id="masterLeadCheckbox"
+                                            onchange="toggleMasterCheckbox(this)"
+                                            class="rounded border-slate-700 text-teal-500 focus:ring-0"
+                                        />
+                                    </th>
+                                    <th class="py-2.5 px-3">Name</th>
+                                    <th class="py-2.5 px-3">Phone</th>
+                                    <th class="py-2.5 px-3">City / Locality</th>
+                                    <th class="py-2.5 px-3">BHK</th>
+                                    <th class="py-2.5 px-3">Stage</th>
+                                    <th class="py-2.5 px-3">Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leadsSelectorTbody" class="divide-y divide-slate-800/40 font-sans">
+                                <!-- Populated dynamically by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 3: FILE UPLOAD -->
+                <div id="sectionFileUpload" class="space-y-4 hidden">
+                    <div
+                        id="fileDropZone"
+                        class="border-2 border-dashed border-slate-700 hover:border-teal-500 rounded-2xl p-8 text-center transition cursor-pointer bg-slate-900/40"
+                        onclick="document.getElementById('excelFileInput').click()"
+                    >
+                        <input
+                            type="file"
+                            id="excelFileInput"
+                            accept=".xlsx, .xls, .csv"
+                            class="hidden"
+                            onchange="handleFileSelected(this.files[0])"
+                        />
+                        <div class="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center mx-auto text-teal-400 mb-3">
+                            <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                        </div>
+                        <div class="text-xs font-semibold text-slate-200">
+                            Upload New Excel (.xlsx, .xls) or CSV File
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-1">
+                            Columns: Name, Phone, City, Locality, BHK, Budget, Requirement
+                        </p>
+                    </div>
+
+                    <!-- File parsed preview -->
+                    <div id="filePreviewContainer" class="hidden space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span id="fileNameBadge" class="text-xs font-semibold text-white"></span>
+                                <span id="fileValidBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"></span>
+                                <span id="fileInvalidBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30"></span>
+                            </div>
+                            <button
+                                type="button"
+                                onclick="clearUploadedFile()"
+                                class="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1"
+                            >
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear File
+                            </button>
+                        </div>
+                        <div class="max-h-60 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="text-[10px] uppercase bg-slate-900/90 text-slate-400 sticky top-0 border-b border-slate-800">
+                                    <tr>
+                                        <th class="py-2 px-3">#</th>
+                                        <th class="py-2 px-3">Name</th>
+                                        <th class="py-2 px-3">Phone</th>
+                                        <th class="py-2 px-3">City</th>
+                                        <th class="py-2 px-3">BHK</th>
+                                        <th class="py-2 px-3">Budget</th>
+                                        <th class="py-2 px-3">Purpose</th>
+                                        <th class="py-2 px-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fileParsedTbody" class="divide-y divide-slate-800/40"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LIVE AUDIENCE BREAKDOWN SUMMARY (WATI-STYLE) -->
+                <div class="border-t border-slate-800/80 pt-4">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+                        <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-teal-400"></i>
+                        Target Audience Forecast
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-center">
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Total Leads</div>
+                            <div id="bdTotal" class="text-lg font-black text-white font-mono mt-0.5">0</div>
+                        </div>
+                        <div class="bg-slate-900/80 border border-teal-500/30 rounded-xl p-3 text-center">
+                            <div class="text-[10px] uppercase font-bold text-teal-400">Eligible</div>
+                            <div id="bdEligible" class="text-lg font-black text-teal-400 font-mono mt-0.5">0</div>
+                        </div>
+                        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-center">
+                            <div class="text-[10px] uppercase font-bold text-slate-500">No Consent</div>
+                            <div id="bdNoConsent" class="text-lg font-black text-slate-400 font-mono mt-0.5">0</div>
+                        </div>
+                        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-center">
+                            <div class="text-[10px] uppercase font-bold text-rose-400">Opted Out</div>
+                            <div id="bdOptedOut" class="text-lg font-black text-rose-400 font-mono mt-0.5">0</div>
+                        </div>
+                        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-center">
+                            <div class="text-[10px] uppercase font-bold text-slate-500">Invalid Phone</div>
+                            <div id="bdInvalidPhone" class="text-lg font-black text-slate-400 font-mono mt-0.5">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBMIT ACTION -->
+            <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+                <a
+                    href="/admin/whatsapp/campaigns/{{ campaign.campaign_id }}"
+                    class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+                >
+                    Cancel
+                </a>
+                <button
+                    type="submit"
+                    id="submitBtn"
+                    class="px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition shadow-lg shadow-teal-600/30 flex items-center gap-2 cursor-pointer"
+                >
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    <span>Save Changes</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const campaignId = "{{ campaign.campaign_id }}";
+    let currentAudienceMode = "{{ campaign.audience_type or 'FILTER' }}";
+    let allAvailableLeads = {{ available_leads|tojson }};
+    let selectedLeadIds = new Set({{ (campaign.selected_lead_ids or [])|tojson }});
+    let uploadedLeadsData = [];
+
+    function switchAudienceMode(mode) {
+        currentAudienceMode = mode;
+
+        const tabBtnFilter = document.getElementById('tabBtnFilter');
+        const tabBtnSelect = document.getElementById('tabBtnSelect');
+        const tabBtnFile = document.getElementById('tabBtnFile');
+
+        const secFilter = document.getElementById('sectionFilter');
+        const secSelect = document.getElementById('sectionSelectLeads');
+        const secFile = document.getElementById('sectionFileUpload');
+
+        // Reset tab styles
+        [tabBtnFilter, tabBtnSelect, tabBtnFile].forEach(btn => {
+            btn.className = "px-3.5 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5";
+        });
+        secFilter.classList.add('hidden');
+        secSelect.classList.add('hidden');
+        secFile.classList.add('hidden');
+
+        if (mode === 'FILTER') {
+            tabBtnFilter.className = "px-3.5 py-1.5 rounded-lg font-medium transition text-white bg-teal-600 flex items-center gap-1.5";
+            secFilter.classList.remove('hidden');
+        } else if (mode === 'SELECTED_LEADS') {
+            tabBtnSelect.className = "px-3.5 py-1.5 rounded-lg font-medium transition text-white bg-teal-600 flex items-center gap-1.5";
+            secSelect.classList.remove('hidden');
+            renderLeadsTable(allAvailableLeads);
+        } else if (mode === 'FILE_UPLOAD') {
+            tabBtnFile.className = "px-3.5 py-1.5 rounded-lg font-medium transition text-white bg-teal-600 flex items-center gap-1.5";
+            secFile.classList.remove('hidden');
+        }
+
+        previewAudience();
+    }
+
+    function renderLeadsTable(leads) {
+        const tbody = document.getElementById('leadsSelectorTbody');
+        if (!leads || leads.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">No leads found.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = leads.map(l => {
+            const isChecked = selectedLeadIds.has(l.lead_id) ? 'checked' : '';
+            return `
+                <tr class="hover:bg-slate-900/50 transition">
+                    <td class="py-2 px-3">
+                        <input
+                            type="checkbox"
+                            value="${l.lead_id}"
+                            ${isChecked}
+                            onchange="handleLeadCheckboxChange(this)"
+                            class="lead-checkbox rounded border-slate-700 text-teal-500"
+                        />
+                    </td>
+                    <td class="py-2 px-3 font-medium text-white">${l.name}</td>
+                    <td class="py-2 px-3 text-slate-300 font-mono">${l.phone}</td>
+                    <td class="py-2 px-3 text-slate-400">${l.locality ? `${l.locality}, ` : ''}${l.city || '—'}</td>
+                    <td class="py-2 px-3 text-slate-300 font-medium">${l.bhk || '—'}</td>
+                    <td class="py-2 px-3"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">${l.sales_stage}</span></td>
+                    <td class="py-2 px-3 font-mono text-teal-400">${l.lead_score}</td>
+                </tr>
+            `;
+        }).join('');
+        updateSelectedCount();
+        lucide.createIcons();
+    }
+
+    function filterLeadsTable() {
+        const q = (document.getElementById('leadSearchInput').value || '').toLowerCase().trim();
+        if (!q) {
+            renderLeadsTable(allAvailableLeads);
+            return;
+        }
+        const filtered = allAvailableLeads.filter(l =>
+            (l.name && l.name.toLowerCase().includes(q)) ||
+            (l.phone && l.phone.includes(q)) ||
+            (l.city && l.city.toLowerCase().includes(q)) ||
+            (l.locality && l.locality.toLowerCase().includes(q)) ||
+            (l.bhk && l.bhk.toLowerCase().includes(q))
+        );
+        renderLeadsTable(filtered);
+    }
+
+    function handleLeadCheckboxChange(el) {
+        if (el.checked) {
+            selectedLeadIds.add(el.value);
+        } else {
+            selectedLeadIds.delete(el.value);
+        }
+        updateSelectedCount();
+        previewAudience();
+    }
+
+    function toggleMasterCheckbox(master) {
+        const checkboxes = document.querySelectorAll('.lead-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = master.checked;
+            if (master.checked) {
+                selectedLeadIds.add(cb.value);
+            } else {
+                selectedLeadIds.delete(cb.value);
+            }
+        });
+        updateSelectedCount();
+        previewAudience();
+    }
+
+    function selectAllLeads(selectAll) {
+        document.getElementById('masterLeadCheckbox').checked = selectAll;
+        if (selectAll) {
+            allAvailableLeads.forEach(l => selectedLeadIds.add(l.lead_id));
+        } else {
+            selectedLeadIds.clear();
+        }
+        const checkboxes = document.querySelectorAll('.lead-checkbox');
+        checkboxes.forEach(cb => { cb.checked = selectAll; });
+        updateSelectedCount();
+        previewAudience();
+    }
+
+    function updateSelectedCount() {
+        const badge = document.getElementById('selectedCountBadge');
+        if (badge) badge.textContent = `${selectedLeadIds.size} Leads Selected`;
+    }
+
+    function handleFileSelected(file) {
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/api/admin/whatsapp/campaigns/parse-leads', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(`File Parse Error: ${data.error}`);
+                return;
+            }
+
+            uploadedLeadsData = data.leads || [];
+            document.getElementById('fileNameBadge').textContent = file.name;
+            document.getElementById('fileValidBadge').textContent = `${data.valid_count || 0} Valid Leads`;
+            document.getElementById('fileInvalidBadge').textContent = `${data.invalid_count || 0} Invalid Phones`;
+
+            const tbody = document.getElementById('fileParsedTbody');
+            tbody.innerHTML = uploadedLeadsData.slice(0, 50).map(l => `
+                <tr class="hover:bg-slate-900/50 transition">
+                    <td class="py-1.5 px-3 text-slate-500 font-mono">${l.row_index}</td>
+                    <td class="py-1.5 px-3 font-medium text-white">${l.name}</td>
+                    <td class="py-1.5 px-3 font-mono text-slate-300">${l.phone || l.raw_phone}</td>
+                    <td class="py-1.5 px-3 text-slate-400">${l.locality ? `${l.locality}, ` : ''}${l.city || '—'}</td>
+                    <td class="py-1.5 px-3 text-slate-300">${l.bhk || '—'}</td>
+                    <td class="py-1.5 px-3 font-mono text-slate-300">${l.budget_max ? `₹${l.budget_max}L` : '—'}</td>
+                    <td class="py-1.5 px-3 text-slate-400">${l.purpose || '—'}</td>
+                    <td class="py-1.5 px-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${l.is_valid ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/40' : 'bg-rose-950 text-rose-400 border border-rose-800/40'}">
+                            ${l.is_valid ? 'VALID' : 'INVALID'}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('filePreviewContainer').classList.remove('hidden');
+            lucide.createIcons();
+            previewAudience();
+        })
+        .catch(err => alert(`Upload failed: ${err.message}`));
+    }
+
+    function clearUploadedFile() {
+        uploadedLeadsData = [];
+        document.getElementById('excelFileInput').value = '';
+        document.getElementById('filePreviewContainer').classList.add('hidden');
+        previewAudience();
+    }
+
+    function previewAudience() {
+        const city = document.getElementById('filterCity').value;
+        const stage = document.getElementById('filterStage').value;
+        const bhk = document.getElementById('filterBhk').value;
+        const score = parseInt(document.getElementById('filterScore').value || '0', 10);
+
+        let payload = {
+            audience_type: currentAudienceMode,
+            city: city || null,
+            stage: stage !== 'ALL' ? stage : null,
+            bhk_filter: bhk || null,
+            min_lead_score: score
+        };
+
+        if (currentAudienceMode === 'SELECTED_LEADS') {
+            payload.selected_lead_ids = Array.from(selectedLeadIds);
+        } else if (currentAudienceMode === 'FILE_UPLOAD') {
+            const valid = uploadedLeadsData.filter(l => l.is_valid).length;
+            const invalid = uploadedLeadsData.filter(l => !l.is_valid).length;
+            document.getElementById('bdTotal').textContent = uploadedLeadsData.length;
+            document.getElementById('bdEligible').textContent = valid;
+            document.getElementById('bdNoConsent').textContent = 0;
+            document.getElementById('bdOptedOut').textContent = 0;
+            document.getElementById('bdInvalidPhone').textContent = invalid;
+            return;
+        }
+
+        fetch('/api/admin/whatsapp/audience/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            const bd = data.breakdown || {};
+            document.getElementById('bdTotal').textContent = bd.total || 0;
+            document.getElementById('bdEligible').textContent = bd.eligible || 0;
+            document.getElementById('bdNoConsent').textContent = bd.excluded_no_consent || 0;
+            document.getElementById('bdOptedOut').textContent = bd.excluded_opted_out || 0;
+            document.getElementById('bdInvalidPhone').textContent = bd.excluded_invalid_phone || 0;
+        })
+        .catch(() => {});
+    }
+
+    function submitUpdateCampaign() {
+        const title = document.getElementById('campTitle').value.trim();
+        const desc = document.getElementById('campDesc').value.trim();
+        const template = document.getElementById('campTemplate').value;
+        const city = document.getElementById('filterCity').value;
+        const stage = document.getElementById('filterStage').value;
+        const bhk = document.getElementById('filterBhk').value;
+        const score = parseInt(document.getElementById('filterScore').value || '0', 10);
+
+        if (!title || !template) return;
+
+        if (currentAudienceMode === 'SELECTED_LEADS' && selectedLeadIds.size === 0) {
+            alert('Please select at least one lead from the table.');
+            return;
+        }
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Saving Changes...</span>`;
+
+        const tags = document.getElementById('campTags').value.trim();
+        const deliveryStart = document.getElementById('campDeliveryStart').value || '09:00';
+        const deliveryEnd = document.getElementById('campDeliveryEnd').value || '21:00';
+        const priority = parseInt(document.getElementById('campPriority').value || '2', 10);
+        const scheduleTime = document.getElementById('campScheduleTime').value || null;
+
+        const payload = {
+            title: title,
+            description: desc,
+            template_name: template,
+            audience_type: currentAudienceMode,
+            target_city: city || null,
+            target_stage: stage !== 'ALL' ? stage : null,
+            bhk_filter: bhk || null,
+            min_lead_score: score,
+            tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+            delivery_window_start: deliveryStart,
+            delivery_window_end: deliveryEnd,
+            priority: priority,
+            scheduled_at: scheduleTime ? new Date(scheduleTime).toISOString() : null
+        };
+
+        if (currentAudienceMode === 'SELECTED_LEADS') {
+            payload.selected_lead_ids = Array.from(selectedLeadIds);
+        } else if (currentAudienceMode === 'FILE_UPLOAD') {
+            payload.imported_leads = uploadedLeadsData;
+        }
+
+        fetch(`/api/admin/whatsapp/campaigns/${campaignId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(async res => {
+            const data = await res.json();
+            if (res.ok && data.success) {
+                window.location.href = `/admin/whatsapp/campaigns/${campaignId}`;
+            } else {
+                alert((data && data.error) || 'Failed to update campaign');
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Save Changes</span>`;
+                lucide.createIcons();
+            }
+        })
+        .catch(err => {
+            alert(`Error: ${err.message}`);
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Save Changes</span>`;
+            lucide.createIcons();
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        switchAudienceMode(currentAudienceMode);
+    });
+</script>
+{% endblock %}

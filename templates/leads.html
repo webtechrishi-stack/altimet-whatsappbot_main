@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}ARIS — Leads Pipeline{% endblock %}
+{% block header_title %}Leads Pipeline & CRM{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto">
+    <!-- CONTROLS HEADER -->
+    <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700/80 shadow-sm">
+        <!-- Stage Filters -->
+        <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 text-xs font-medium">
+            <button onclick="filterStage('ALL')" class="stage-btn px-3 py-1.5 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold">All</button>
+            <button onclick="filterStage('NEW')" class="stage-btn px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">New</button>
+            <button onclick="filterStage('QUALIFYING')" class="stage-btn px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Qualifying</button>
+            <button onclick="filterStage('PROPERTY_SHORTLISTED')" class="stage-btn px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Shortlisted</button>
+            <button onclick="filterStage('VISIT_BOOKED')" class="stage-btn px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Visit Booked</button>
+            <button onclick="filterStage('CONVERTED')" class="stage-btn px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Converted</button>
+        </div>
+
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <!-- Search Input -->
+            <div class="relative w-full md:w-64">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+                <input type="text" id="lead-search-input" onkeyup="handleSearch(event)" placeholder="Search name, WhatsApp ID..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <!-- Add Lead Button -->
+            <button onclick="openAddLeadModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white dark:text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition whitespace-nowrap cursor-pointer">
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                <span>Add Lead</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- LEADS TABLE -->
+    <div class="glass-panel rounded-2xl overflow-hidden bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700/80 shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50/90 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
+                    <tr>
+                        <th class="py-3.5 px-6">Lead / Contact</th>
+                        <th class="py-3.5 px-6">AI Score</th>
+                        <th class="py-3.5 px-6">Sales Stage</th>
+                        <th class="py-3.5 px-6">Preferences</th>
+                        <th class="py-3.5 px-6">Shortlisted</th>
+                        <th class="py-3.5 px-6">Last Active</th>
+                        <th class="py-3.5 px-6 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="leads-table-body" class="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+                    <tr>
+                        <td colspan="7" class="py-12 text-center text-slate-400 dark:text-slate-500">Loading leads...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PAGINATION FOOTER -->
+        <div class="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span id="pagination-info">Showing 0 leads</span>
+            <div class="flex items-center gap-2">
+                <button id="btn-prev" onclick="prevPage()" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white disabled:opacity-40 transition">Previous</button>
+                <button id="btn-next" onclick="nextPage()" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white disabled:opacity-40 transition">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD MANUAL LEAD MODAL -->
+    <div id="add-lead-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-sm">Add New Authorized Lead</h4>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Authorizes outbound WhatsApp messages for this number</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeAddLeadModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleCreateLead(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Customer / Client Name</label>
+                    <input type="text" id="new-lead-name" required placeholder="e.g. Rahul Sharma" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 dark:text-slate-400 mb-1 font-medium">WhatsApp Phone Number</label>
+                    <input type="text" id="new-lead-phone" required placeholder="e.g. 8600079496 or 918600079496" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono">
+                    <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Default dummy test numbers are strictly blocked by safety guard.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-600 dark:text-slate-400 mb-1 font-medium">City</label>
+                        <input type="text" id="new-lead-city" value="Nagpur" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Preferred BHK</label>
+                        <select id="new-lead-bhk" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                            <option value="2BHK">2 BHK</option>
+                            <option value="3BHK">3 BHK</option>
+                            <option value="4BHK">4 BHK</option>
+                            <option value="Villa">Villa / Penthouse</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Budget Max (₹ Lakhs)</label>
+                    <input type="number" id="new-lead-budget" placeholder="e.g. 75" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono">
+                </div>
+
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                    <div>
+                        <span class="font-medium text-slate-300 block">AI Auto-Reply</span>
+                        <span class="text-[10px] text-slate-500">Allow AI to converse automatically with this lead</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" id="new-lead-ai-toggle" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeAddLeadModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">Cancel</button>
+                    <button type="submit" id="new-lead-submit-btn" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold shadow-lg shadow-emerald-500/20">Save & Authorize</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentStage = 'ALL';
+    let currentPage = 1;
+    let searchQuery = '';
+
+    async function loadLeads() {
+        try {
+            let url = `/api/leads?page=${currentPage}&limit=15`;
+            if (currentStage && currentStage !== 'ALL') url += `&stage=${currentStage}`;
+            if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            renderLeads(data.leads || []);
+            renderPagination(data.pagination || {});
+        } catch (e) {
+            console.error('Error loading leads:', e);
+        }
+    }
+
+    function renderLeads(leads) {
+        const tbody = document.getElementById('leads-table-body');
+        if (!leads.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="py-12 text-center text-slate-500">No matching leads found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = leads.map(l => {
+            const score = l.lead_score || 0;
+            let scoreBadge = 'badge-cold';
+            let scoreCategory = 'Cold';
+            if (score >= 81) { scoreBadge = 'badge-very-hot'; scoreCategory = 'Very Hot 🔥'; }
+            else if (score >= 61) { scoreBadge = 'badge-hot'; scoreCategory = 'Hot 🔥'; }
+            else if (score >= 31) { scoreBadge = 'badge-warm'; scoreCategory = 'Warm'; }
+
+            const bhkStr = (l.bhk || []).join(', ') || 'Any';
+            const cityStr = l.preferred_city || 'Not set';
+            const budgetStr = l.budget_max ? `₹${l.budget_max}L` : 'Flexible';
+            const shortlistedCount = (l.shortlisted_properties || []).length;
+            const lastActive = l.last_interaction_at ? new Date(l.last_interaction_at).toLocaleDateString() : '--';
+
+            return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                    <td class="py-4 px-6">
+                        <div class="font-bold text-slate-900 dark:text-white">${l.name || 'Valued Client'}</div>
+                        <div class="font-mono text-slate-500 dark:text-slate-400 text-[11px]">+${l.wa_id}</div>
+                    </td>
+                    <td class="py-4 px-6">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${scoreBadge}">
+                            ${score} • ${scoreCategory}
+                        </span>
+                    </td>
+                    <td class="py-4 px-6">
+                        <select onchange="updateStage('${l.lead_id}', this.value)" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-500">
+                            ${['NEW', 'QUALIFYING', 'PROPERTY_DISCOVERY', 'PROPERTY_SHORTLISTED', 'VISIT_REQUESTED', 'VISIT_BOOKED', 'VISIT_COMPLETED', 'CONVERTED', 'LOST'].map(st => `
+                                <option value="${st}" ${l.sales_stage === st ? 'selected' : ''}>${st}</option>
+                            `).join('')}
+                        </select>
+                    </td>
+                    <td class="py-4 px-6 text-slate-700 dark:text-slate-300">
+                        <div>📍 ${cityStr}</div>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400">🏡 ${bhkStr} | 💰 ${budgetStr}</div>
+                    </td>
+                    <td class="py-4 px-6">
+                        <span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] border border-slate-200 dark:border-slate-700">
+                            ${shortlistedCount} saved
+                        </span>
+                    </td>
+                    <td class="py-4 px-6 text-slate-500 dark:text-slate-400 font-mono text-[11px]">${lastActive}</td>
+                    <td class="py-4 px-6 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <button onclick="toggleLeadAi('${l.lead_id}', ${l.ai_reply_enabled === false ? 'true' : 'false'})" 
+                                    title="${l.ai_reply_enabled === false ? 'AI Paused - Click to Enable' : 'AI Active - Click to Pause'}"
+                                    class="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${
+                                        l.ai_reply_enabled === false ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                                    }">
+                                ${l.ai_reply_enabled === false ? '🤖 Paused' : '🤖 AI On'}
+                            </button>
+                            <a href="/dashboard/leads/${l.lead_id}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition text-xs font-semibold">
+                                View 360
+                                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        lucide.createIcons();
+    }
+
+    function renderPagination(pg) {
+        document.getElementById('pagination-info').innerText = `Page ${pg.page || 1} of ${pg.pages || 1} (${pg.total || 0} leads total)`;
+        document.getElementById('btn-prev').disabled = (pg.page || 1) <= 1;
+        document.getElementById('btn-next').disabled = (pg.page || 1) >= (pg.pages || 1);
+    }
+
+    function prevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            loadLeads();
+        }
+    }
+
+    function nextPage() {
+        currentPage++;
+        loadLeads();
+    }
+
+    function filterStage(stage) {
+        currentStage = stage;
+        currentPage = 1;
+        document.querySelectorAll('.stage-btn').forEach(btn => {
+            btn.className = 'stage-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white';
+        });
+        event.target.className = 'stage-btn px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold';
+        loadLeads();
+    }
+
+    let debounceTimeout = null;
+    function handleSearch(e) {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            searchQuery = e.target.value.trim();
+            currentPage = 1;
+            loadLeads();
+        }, 350);
+    }
+
+    async function updateStage(leadId, newStage) {
+        try {
+            await fetch(`/api/leads/${leadId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sales_stage: newStage })
+            });
+            loadLeads();
+        } catch (e) {
+            alert('Failed to update stage: ' + e);
+        }
+    }
+
+    function openAddLeadModal() {
+        document.getElementById('add-lead-modal').classList.remove('hidden');
+        document.getElementById('new-lead-name').focus();
+    }
+
+    function closeAddLeadModal() {
+        document.getElementById('add-lead-modal').classList.add('hidden');
+    }
+
+    async function handleCreateLead(e) {
+        e.preventDefault();
+        const submitBtn = document.getElementById('new-lead-submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Authorizing...';
+
+        const name = document.getElementById('new-lead-name').value.trim();
+        const phone = document.getElementById('new-lead-phone').value.trim();
+        const city = document.getElementById('new-lead-city').value.trim();
+        const bhk = document.getElementById('new-lead-bhk').value;
+        const budget = document.getElementById('new-lead-budget').value;
+        const aiEnabled = document.getElementById('new-lead-ai-toggle').checked;
+
+        try {
+            const res = await fetch('/api/leads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    phone: phone,
+                    city: city,
+                    bhk: bhk,
+                    budget_max: budget ? parseFloat(budget) : 0,
+                    ai_reply_enabled: aiEnabled
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                closeAddLeadModal();
+                document.getElementById('new-lead-name').value = '';
+                document.getElementById('new-lead-phone').value = '';
+                document.getElementById('new-lead-budget').value = '';
+                loadLeads();
+            } else {
+                alert('Failed to add lead: ' + (data.error || 'Server error'));
+            }
+        } catch (err) {
+            alert('Error adding lead: ' + err);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Save & Authorize';
+        }
+    }
+
+    async function toggleLeadAi(leadId, enable) {
+        try {
+            const res = await fetch(`/api/leads/${leadId}/toggle-ai`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: enable })
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadLeads();
+            } else {
+                alert('Failed to toggle AI: ' + (data.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Failed to toggle AI: ' + e);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadLeads();
+        // Auto-refresh leads every 4 seconds for realtime sync
+        setInterval(() => {
+            const searchInput = document.getElementById('lead-search-input');
+            if (document.activeElement !== searchInput) {
+                loadLeads();
+            }
+        }, 4000);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}ARIS — Live WhatsApp Inbox{% endblock %}
+{% block header_title %}Live WhatsApp Inbox & Conversation Monitoring{% endblock %}
+
+{% block content %}
+<div class="h-[calc(100vh-8.5rem)] glass-panel rounded-2xl flex overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <!-- LEFT PANE: CONVERSATION LIST (360px) -->
+    <div class="w-88 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/70 dark:bg-slate-900/50 shrink-0">
+        <!-- Search bar & Temperature Filter -->
+        <div class="p-3.5 border-b border-slate-200 dark:border-slate-800 space-y-2">
+            <div class="relative">
+                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5"></i>
+                <input type="text" id="conv-search" onkeyup="filterConversations(this.value)" placeholder="Search chats, text, BHK, area..." class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 shadow-sm">
+            </div>
+            <!-- Temperature Filters -->
+            <div class="flex items-center gap-1 text-[10px] font-bold">
+                <button onclick="setFilter('ALL')" id="filter-btn-ALL" class="filter-tab px-2 py-1 rounded-md bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">ALL</button>
+                <button onclick="setFilter('HOT')" id="filter-btn-HOT" class="filter-tab px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition">🔥 HOT</button>
+                <button onclick="setFilter('WARM')" id="filter-btn-WARM" class="filter-tab px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 transition">WARM</button>
+                <button onclick="setFilter('UNREAD')" id="filter-btn-UNREAD" class="filter-tab px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-cyan-500 dark:hover:text-cyan-400 transition">UNREAD</button>
+            </div>
+        </div>
+
+        <!-- Chat List -->
+        <div id="conversations-list" class="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/40">
+            <div class="p-6 text-center text-slate-400 dark:text-slate-500 text-xs">Loading conversations...</div>
+        </div>
+    </div>
+
+    <!-- RIGHT PANE: ACTIVE CHAT THREAD -->
+    <div class="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-950/60">
+        <!-- Thread Header -->
+        <div id="chat-header" class="h-16 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between bg-white/90 dark:bg-slate-900/40">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-sm">
+                    💬
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 id="chat-customer-name" class="font-bold text-sm text-slate-900 dark:text-white leading-none">Select a Conversation</h3>
+                        <span id="chat-temp-badge" class="hidden px-2 py-0.2 rounded text-[10px] font-bold"></span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span id="chat-phone" class="font-mono">No contact active</span>
+                        <span id="chat-lead-link" class="hidden">• <a href="#" id="view-lead-btn" class="text-emerald-600 dark:text-emerald-400 hover:underline">View Lead 360 & Memory →</a></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Auto-Reply / Manual Takeover Toggle -->
+            <div id="takeover-container" class="hidden flex items-center gap-3">
+                <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 shadow-sm">
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">AI Auto-Reply:</span>
+                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" id="ai-autoreply-toggle" onchange="handleAiToggle(this.checked)" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                    <span id="ai-toggle-label" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">ON</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Bubble Area -->
+        <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div class="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-xs">
+                <i data-lucide="message-square" class="w-8 h-8 text-slate-400 dark:text-slate-600 mb-2"></i>
+                <p>Select a contact from the left pane to view WhatsApp chat history.</p>
+            </div>
+        </div>
+
+        <!-- Message Composer -->
+        <div id="composer-container" class="hidden p-4 border-t border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60">
+            <form onsubmit="handleSendMessage(event)" class="flex items-center gap-3">
+                <input type="text" id="manual-message-input" placeholder="Type a reply to send directly to customer's WhatsApp..." class="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 shadow-sm">
+                <button type="submit" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white dark:text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition cursor-pointer">
+                    <span>Send</span>
+                    <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let activeConversationId = null;
+    let activeWaId = null;
+    let activeLeadId = null;
+    let conversationsData = [];
+    let currentFilter = 'ALL';
+
+    async function loadConversations() {
+        try {
+            const res = await fetch('/api/conversations');
+            const data = await res.json();
+            conversationsData = data.conversations || [];
+            applyFilter();
+
+            // Verify active conversation still exists or select first available
+            const currentExists = conversationsData.some(c => c.conversation_id === activeConversationId);
+            if (!currentExists && conversationsData.length > 0) {
+                selectConversation(
+                    conversationsData[0].conversation_id,
+                    conversationsData[0].wa_id,
+                    conversationsData[0].customer_name,
+                    conversationsData[0].lead_id,
+                    conversationsData[0].lead_temperature
+                );
+            } else if (!currentExists) {
+                activeConversationId = null;
+                activeWaId = null;
+            }
+        } catch (e) {
+            console.error('Failed to load conversations:', e);
+        }
+    }
+
+    function setFilter(filter) {
+        currentFilter = filter;
+        document.querySelectorAll('.filter-tab').forEach(el => {
+            el.className = 'filter-tab px-2 py-1 rounded-md bg-slate-800 text-slate-400 hover:text-white';
+        });
+        const activeBtn = document.getElementById(`filter-btn-${filter}`);
+        if (activeBtn) {
+            activeBtn.className = 'filter-tab px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold';
+        }
+        applyFilter();
+    }
+
+    function applyFilter() {
+        let filtered = conversationsData;
+        if (currentFilter === 'HOT') {
+            filtered = conversationsData.filter(c => c.lead_temperature === 'HOT');
+        } else if (currentFilter === 'WARM') {
+            filtered = conversationsData.filter(c => c.lead_temperature === 'WARM');
+        } else if (currentFilter === 'UNREAD') {
+            filtered = conversationsData.filter(c => (c.unread_count || 0) > 0);
+        }
+        renderConversationsList(filtered);
+    }
+
+    function filterConversations(val) {
+        const query = val.toLowerCase().trim();
+        if (!query) {
+            applyFilter();
+            return;
+        }
+        const matched = conversationsData.filter(c =>
+            (c.customer_name && c.customer_name.toLowerCase().includes(query)) ||
+            (c.wa_id && c.wa_id.includes(query)) ||
+            (c.sales_stage && c.sales_stage.toLowerCase().includes(query))
+        );
+        renderConversationsList(matched);
+    }
+
+    function renderConversationsList(convs) {
+        const container = document.getElementById('conversations-list');
+        if (!convs.length) {
+            container.innerHTML = '<div class="p-6 text-center text-slate-500 text-xs">No conversations matching filter.</div>';
+            return;
+        }
+
+        container.innerHTML = convs.map(c => {
+            const isActive = c.conversation_id === activeConversationId;
+            const temp = c.lead_temperature || 'WARM';
+            const tempClass = temp === 'HOT' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : (
+                temp === 'WARM' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400'
+            );
+            const unreadBadge = c.unread_count > 0 ? `
+                <span class="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] flex items-center justify-center animate-pulse">
+                    ${c.unread_count}
+                </span>
+            ` : '';
+
+            return `
+                <div onclick="selectConversation('${c.conversation_id}', '${c.wa_id}', '${c.customer_name}', '${c.lead_id || ''}', '${temp}')" class="p-3.5 cursor-pointer transition ${isActive ? 'bg-slate-100 dark:bg-slate-800/90 border-l-2 border-emerald-500' : 'hover:bg-slate-100/70 dark:hover:bg-slate-800/40'}">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-bold text-xs text-slate-900 dark:text-white truncate max-w-[160px]">${c.customer_name}</span>
+                        <div class="flex items-center gap-1.5">
+                            ${unreadBadge}
+                            <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">${c.last_message_at ? new Date(c.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                        <span class="font-mono text-slate-500 dark:text-slate-400">+${c.wa_id}</span>
+                        <div class="flex items-center gap-1">
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-bold ${tempClass}">
+                                ${temp}
+                            </span>
+                            <span class="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-700 dark:text-emerald-400 border border-slate-200 dark:border-slate-700">
+                                Score: ${c.lead_score || 0}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function selectConversation(convId, waId, name, leadId, temp) {
+        activeConversationId = convId;
+        activeWaId = waId;
+        activeLeadId = leadId;
+
+        const currentConv = conversationsData.find(c => c.conversation_id === convId);
+        document.getElementById('chat-customer-name').innerText = name || 'Customer';
+        document.getElementById('chat-phone').innerText = '+' + waId;
+
+        const tempBadge = document.getElementById('chat-temp-badge');
+        if (temp) {
+            tempBadge.className = 'px-2 py-0.2 rounded text-[10px] font-bold ' + (
+                temp === 'HOT' ? 'bg-rose-500/15 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30' : (
+                    temp === 'WARM' ? 'bg-amber-500/15 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400'
+                )
+            );
+            tempBadge.innerText = temp;
+            tempBadge.classList.remove('hidden');
+        }
+
+        const leadLink = document.getElementById('chat-lead-link');
+        const viewLeadBtn = document.getElementById('view-lead-btn');
+        if (leadId) {
+            viewLeadBtn.href = `/dashboard/leads/${leadId}`;
+            leadLink.classList.remove('hidden');
+        } else {
+            leadLink.classList.add('hidden');
+        }
+
+        document.getElementById('takeover-container').classList.remove('hidden');
+        document.getElementById('composer-container').classList.remove('hidden');
+
+        if (currentConv) {
+            const isAiEnabled = (!currentConv.human_takeover && currentConv.ai_reply_enabled !== false);
+            const toggle = document.getElementById('ai-autoreply-toggle');
+            const label = document.getElementById('ai-toggle-label');
+            if (toggle) toggle.checked = isAiEnabled;
+            if (label) {
+                label.innerText = isAiEnabled ? 'ON' : 'OFF (Paused)';
+                label.className = isAiEnabled ? 'text-[11px] font-bold text-emerald-600 dark:text-emerald-400' : 'text-[11px] font-bold text-amber-600 dark:text-amber-400';
+            }
+            currentConv.unread_count = 0;
+        }
+
+        // Reset unread count on server
+        fetch(`/api/conversations/${convId}/read`, { method: 'POST' });
+
+        applyFilter();
+        loadMessages(convId, false);
+    }
+
+    let lastRenderedCount = 0;
+    async function loadMessages(convId, silent = false) {
+        const container = document.getElementById('messages-container');
+        if (!silent) {
+            container.innerHTML = '<div class="h-full flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs">Loading message history...</div>';
+        }
+
+        try {
+            const res = await fetch(`/api/conversations/${convId}/messages?limit=100`);
+            const data = await res.json();
+            const messages = data.messages || [];
+
+            if (!messages.length) {
+                container.innerHTML = '<div class="h-full flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs">No messages recorded in this conversation.</div>';
+                lastRenderedCount = 0;
+                return;
+            }
+
+            if (silent && messages.length === lastRenderedCount) {
+                return;
+            }
+            lastRenderedCount = messages.length;
+
+            const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+
+            container.innerHTML = messages.map(m => {
+                const st = (m.sender_type || 'CUSTOMER').toUpperCase();
+                const isCustomer = (st === 'CUSTOMER' || m.role === 'user');
+                const isHuman = (st === 'HUMAN');
+                const isAi = (st === 'AI' || m.role === 'assistant');
+                const timeStr = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const senderLabel = isCustomer ? '👤 Customer' : (isHuman ? '👨‍💼 Sales Rep' : (isAi ? '🤖 ARIS' : '⚙️ System'));
+
+                return `
+                    <div class="flex flex-col ${isCustomer ? 'items-start' : 'items-end'}">
+                        <span class="text-[9px] text-slate-500 dark:text-slate-400 font-semibold mb-0.5 px-1">${senderLabel}</span>
+                        <div class="max-w-lg rounded-2xl px-4 py-2.5 text-xs shadow-sm leading-relaxed whitespace-pre-wrap ${
+                            isCustomer ? 'bg-white text-slate-800 border border-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-800 rounded-bl-none shadow-sm' : (
+                                isHuman ? 'bg-blue-600 text-white rounded-br-none shadow-sm' : 'bg-emerald-600 text-white rounded-br-none shadow-sm'
+                            )
+                        }">
+                            <div>${m.text || m.content || ''}</div>
+                            <div class="text-[9px] mt-1 text-right font-mono opacity-80">
+                                <span>${timeStr}</span>
+                                ${(!isCustomer && m.status) ? `<span>• ${m.status}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (!silent || isScrolledToBottom) {
+                container.scrollTop = container.scrollHeight;
+            }
+        } catch (e) {
+            if (!silent) {
+                container.innerHTML = `<div class="p-4 text-red-400 text-xs">Error loading messages: ${e}</div>`;
+            }
+        }
+    }
+
+    async function handleSendMessage(e) {
+        e.preventDefault();
+        const input = document.getElementById('manual-message-input');
+        const text = input.value.trim();
+        if (!text || !activeConversationId || !activeWaId) return;
+
+        input.value = '';
+
+        try {
+            const res = await fetch(`/api/conversations/${activeConversationId}/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wa_id: activeWaId, text: text })
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadMessages(activeConversationId, false);
+            } else {
+                alert('Send failed: ' + (data.error || 'Failed'));
+            }
+        } catch (err) {
+            alert('Send error: ' + err);
+        }
+    }
+
+    async function handleAiToggle(enabled) {
+        if (!activeConversationId) return;
+        const label = document.getElementById('ai-toggle-label');
+        if (label) {
+            label.innerText = enabled ? 'ON' : 'OFF (Paused)';
+            label.className = enabled ? 'text-[11px] font-bold text-emerald-400' : 'text-[11px] font-bold text-amber-400';
+        }
+        try {
+            await fetch(`/api/conversations/${activeConversationId}/toggle-ai`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: enabled })
+            });
+            const currentConv = conversationsData.find(c => c.conversation_id === activeConversationId);
+            if (currentConv) {
+                currentConv.human_takeover = !enabled;
+                currentConv.ai_reply_enabled = enabled;
+            }
+        } catch (e) {
+            console.error('Failed to toggle AI for conversation:', e);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadConversations();
+        setInterval(() => {
+            if (activeConversationId) {
+                loadMessages(activeConversationId, true);
+            }
+        }, 4000);
+        setInterval(loadConversations, 8000);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}ARIS — Outbound WhatsApp Campaigns{% endblock %}
+{% block header_title %}WhatsApp Marketing Campaigns{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- KPI ROW -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-lg">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Campaigns</span>
+                <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                    <i data-lucide="megaphone" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <p class="text-2xl font-extrabold text-white mt-3" id="kpi-total-cmp">--</p>
+            <p class="text-xs text-slate-500 mt-1">Outbound Broadcast Sequences</p>
+        </div>
+
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-lg">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Messages Sent</span>
+                <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <p class="text-2xl font-extrabold text-white mt-3" id="kpi-sent-cmp">--</p>
+            <p class="text-xs text-slate-500 mt-1">Template dispatches</p>
+        </div>
+
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-lg">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Opt-In Guard</span>
+                <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <p class="text-lg font-bold text-purple-300 mt-3">100% Active</p>
+            <p class="text-xs text-slate-500 mt-1">Skips opted-out leads automatically</p>
+        </div>
+
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-lg">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Compliance</span>
+                <div class="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <p class="text-lg font-bold text-teal-300 mt-3">Meta Verified</p>
+            <p class="text-xs text-slate-500 mt-1">Approved utility & marketing templates</p>
+        </div>
+    </div>
+
+    <!-- ACTION BAR -->
+    <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider">Campaign Sequences</h3>
+        <button onclick="openCampaignModal()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Create New Campaign</span>
+        </button>
+    </div>
+
+    <!-- CAMPAIGNS TABLE -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-lg overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">Campaign Title</th>
+                        <th class="px-6 py-4">Template Name</th>
+                        <th class="px-6 py-4">Audience Scope</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Recipients</th>
+                        <th class="px-6 py-4">Sent / Failed</th>
+                        <th class="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="campaigns-tbody" class="divide-y divide-slate-800/60 font-medium">
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-500">Loading campaigns...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- CREATE CAMPAIGN MODAL -->
+<div id="campaign-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                    <i data-lucide="megaphone" class="w-4 h-4"></i>
+                </div>
+                <h3 class="font-bold text-white text-base">New WhatsApp Campaign</h3>
+            </div>
+            <button onclick="closeCampaignModal()" class="text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form id="campaign-form" class="space-y-4 text-xs">
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Campaign Title</label>
+                <input type="text" name="title" required placeholder="e.g. Diwali Fest Exclusive Plots Broadcast"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Meta Approved Template Name</label>
+                <input type="text" name="template_name" required placeholder="e.g. property_new_launch_v1"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                <p class="text-[10px] text-slate-500 mt-1">Note: hello_world is rejected. Must be an approved marketing template.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Target City</label>
+                    <select name="target_city" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                        <option value="">All Cities</option>
+                        <option value="Nagpur">Nagpur</option>
+                        <option value="Pune">Pune</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Target Sales Stage</label>
+                    <select name="target_stage" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                        <option value="ALL">All Stages</option>
+                        <option value="NEW">New Leads</option>
+                        <option value="QUALIFYING">Qualifying</option>
+                        <option value="PROPERTY_DISCOVERY">Property Discovery</option>
+                        <option value="VISIT_BOOKED">Visit Booked</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="pt-3 flex items-center justify-end gap-3">
+                <button type="button" onclick="closeCampaignModal()" class="px-4 py-2 rounded-xl font-semibold text-slate-400 hover:text-white bg-slate-800">Cancel</button>
+                <button type="submit" class="px-5 py-2 rounded-xl font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-500 transition-all flex items-center gap-1.5">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    <span>Create Campaign</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadCampaigns() {
+    try {
+        const res = await fetch('/api/campaigns');
+        const data = await res.json();
+        const campaigns = data.campaigns || [];
+
+        // Update KPIs
+        document.getElementById('kpi-total-cmp').innerText = campaigns.length;
+        const totalSent = campaigns.reduce((sum, c) => sum + (c.sent_count || 0), 0);
+        document.getElementById('kpi-sent-cmp').innerText = totalSent;
+
+        const tbody = document.getElementById('campaigns-tbody');
+        if (!campaigns.length) {
+            tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-slate-500">No campaigns created yet. Click 'Create New Campaign' to draft an outbound broadcast.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = campaigns.map(c => {
+            const statusBadge = c.status === 'completed'
+                ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold">Completed</span>`
+                : c.status === 'running'
+                ? `<span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-semibold animate-pulse">Running</span>`
+                : `<span class="px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 text-[10px] font-semibold">Draft</span>`;
+
+            return `
+                <tr class="hover:bg-slate-800/30 transition">
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-white">${c.title}</div>
+                        <div class="text-[10px] font-mono text-slate-500">${c.campaign_id}</div>
+                    </td>
+                    <td class="px-6 py-4 font-mono text-purple-400 font-semibold">${c.template_name}</td>
+                    <td class="px-6 py-4 text-slate-300">${c.target_city || 'All Cities'} (${c.target_stage || 'All Stages'})</td>
+                    <td class="px-6 py-4">${statusBadge}</td>
+                    <td class="px-6 py-4 font-bold text-white">${c.total_recipients || 0}</td>
+                    <td class="px-6 py-4">
+                        <span class="text-emerald-400 font-bold">${c.sent_count || 0} sent</span>
+                        ${c.failed_count ? `<span class="text-rose-400 font-bold"> • ${c.failed_count} failed</span>` : ''}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        ${c.status === 'draft' ? `
+                            <button onclick="runCampaign('${c.campaign_id}')" class="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold inline-flex items-center gap-1.5">
+                                <i data-lucide="send" class="w-3.5 h-3.5"></i> Launch
+                            </button>
+                        ` : `
+                            <span class="text-xs text-slate-500 font-medium">Finished</span>
+                        `}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        lucide.createIcons();
+    } catch (ex) {
+        console.error("Failed to load campaigns", ex);
+    }
+}
+
+function openCampaignModal() {
+    document.getElementById('campaign-modal').classList.remove('hidden');
+    document.getElementById('campaign-modal').classList.add('flex');
+}
+
+function closeCampaignModal() {
+    document.getElementById('campaign-modal').classList.add('hidden');
+    document.getElementById('campaign-modal').classList.remove('flex');
+}
+
+document.getElementById('campaign-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const payload = Object.fromEntries(formData.entries());
+
+    try {
+        const res = await fetch('/api/campaigns', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            closeCampaignModal();
+            loadCampaigns();
+        } else {
+            alert(data.error || "Failed to create campaign");
+        }
+    } catch (ex) {
+        alert("Error: " + ex);
+    }
+});
+
+async function runCampaign(id) {
+    if (!confirm("Launch this campaign broadcast now to all eligible opt-in leads?")) return;
+    try {
+        const res = await fetch(`/api/campaigns/${id}/run`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert(`Broadcast completed! Sent to ${data.sent_count} leads.`);
+            loadCampaigns();
+        } else {
+            alert(data.error || "Broadcast error");
+        }
+    } catch (ex) {
+        alert("Launch failed: " + ex);
+    }
+}
+
+loadCampaigns();
+</script>
+{% endblock %}

@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}WhatsApp Campaigns — ARIS AI{% endblock %}
+{% block header_title %}WhatsApp Outbound Campaigns{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- TOP HEADER / HERO -->
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm shadow-xl">
+        <div>
+            <div class="flex items-center gap-2">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <i data-lucide="megaphone" class="w-5 h-5"></i>
+                </div>
+                <h3 class="text-base font-bold text-white tracking-wide">
+                    WhatsApp Bulk Outreach Platform
+                </h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-1.5 ml-11">
+                WATI / AiSensy-grade audience segmentation, delivery window scheduling, throttled cloud dispatch, and real-time delivery telemetry.
+            </p>
+        </div>
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <a
+                href="/admin/whatsapp/campaigns/new"
+                class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-emerald-600/25"
+            >
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>Create Campaign</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- AGGREGATE KPI METRICS -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 backdrop-blur-sm">
+            <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Total Campaigns</div>
+            <div class="text-xl font-bold font-mono text-white mt-1">{{ stats.total_campaigns or 0 }}</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Active & Archived</div>
+        </div>
+        <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 backdrop-blur-sm">
+            <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Messages Sent</div>
+            <div class="text-xl font-bold font-mono text-blue-400 mt-1">{{ stats.total_sent or 0 }}</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Meta API accepted</div>
+        </div>
+        <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 backdrop-blur-sm">
+            <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Delivered</div>
+            <div class="text-xl font-bold font-mono text-teal-400 mt-1">{{ stats.total_delivered or 0 }}</div>
+            <div class="text-[10px] text-emerald-400/90 mt-0.5 font-mono">{{ stats.delivery_rate or 0 }}% rate</div>
+        </div>
+        <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 backdrop-blur-sm">
+            <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Read by Leads</div>
+            <div class="text-xl font-bold font-mono text-emerald-400 mt-1">{{ stats.total_read or 0 }}</div>
+            <div class="text-[10px] text-teal-400/90 mt-0.5 font-mono">{{ stats.read_rate or 0 }}% read rate</div>
+        </div>
+        <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 backdrop-blur-sm">
+            <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Replied</div>
+            <div class="text-xl font-bold font-mono text-indigo-400 mt-1">{{ stats.total_replied or 0 }}</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Two-way responses</div>
+        </div>
+        <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 backdrop-blur-sm">
+            <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Consent Opted In</div>
+            <div class="text-xl font-bold font-mono text-amber-400 mt-1">100%</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Strict opt-in filter</div>
+        </div>
+    </div>
+
+    <!-- FILTER & SEARCH TOOLBAR -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 backdrop-blur-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <!-- Status Tabs -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none text-xs">
+            {% set statuses = ['ALL', 'RUNNING', 'READY', 'QUEUED', 'PAUSED', 'COMPLETED', 'DRAFT', 'CANCELLED'] %}
+            {% for st in statuses %}
+            <a
+                href="/admin/whatsapp/campaigns?status={{ st }}{% if search_query %}&q={{ search_query }}{% endif %}"
+                class="px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap {% if current_status == st or (not current_status and st == 'ALL') %}bg-emerald-500/20 text-emerald-300 border border-emerald-500/30{% else %}bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-transparent{% endif %}"
+            >
+                {{ st }}
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- Search Input -->
+        <form method="GET" action="/admin/whatsapp/campaigns" class="flex items-center gap-2">
+            {% if current_status and current_status != 'ALL' %}
+            <input type="hidden" name="status" value="{{ current_status }}">
+            {% endif %}
+            <div class="relative w-full md:w-64">
+                <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-3 text-slate-500"></i>
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ search_query }}"
+                    placeholder="Search campaigns..."
+                    class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
+                >
+            </div>
+            {% if search_query %}
+            <a href="/admin/whatsapp/campaigns{% if current_status and current_status != 'ALL' %}?status={{ current_status }}{% endif %}" class="px-2.5 py-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white text-xs">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- CAMPAIGNS TABLE -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+                <thead class="text-[11px] uppercase bg-slate-950/80 text-slate-400 border-b border-slate-800">
+                    <tr>
+                        <th class="py-3.5 px-4 font-semibold">Campaign Title</th>
+                        <th class="py-3.5 px-4 font-semibold">Template & Language</th>
+                        <th class="py-3.5 px-4 font-semibold">Target Audience</th>
+                        <th class="py-3.5 px-4 font-semibold">Status</th>
+                        <th class="py-3.5 px-4 font-semibold">Delivery Progress</th>
+                        <th class="py-3.5 px-4 font-semibold">Created / Scheduled</th>
+                        <th class="py-3.5 px-4 font-semibold text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-sans">
+                    {% if campaigns %}
+                    {% for c in campaigns %}
+                    <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3.5 px-4">
+                            <a href="/admin/whatsapp/campaigns/{{ c.campaign_id }}" class="font-semibold text-white hover:text-emerald-400 text-xs flex items-center gap-1.5">
+                                {{ c.title }}
+                            </a>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] font-mono text-slate-500">{{ c.campaign_id }}</span>
+                                {% if c.cloned_from %}
+                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">Cloned</span>
+                                {% endif %}
+                                {% if c.tags %}
+                                {% for t in c.tags[:2] %}
+                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">#{{ t }}</span>
+                                {% endfor %}
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="font-medium text-emerald-400">{{ c.template_name }}</div>
+                            <div class="text-[10px] text-slate-400 uppercase font-mono">{{ c.language_code or 'en' }}</div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="text-slate-300 font-medium">
+                                {{ c.target_city or 'All Cities' }}
+                            </div>
+                            <div class="text-[10px] text-slate-500">
+                                {{ c.target_stage or 'All Stages' }} {% if c.bhk_filter %}&bull; {{ c.bhk_filter }}{% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            {% if c.status == 'RUNNING' %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse">RUNNING</span>
+                            {% elif c.status == 'QUEUED' %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">QUEUED</span>
+                            {% elif c.status == 'COMPLETED' %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">COMPLETED</span>
+                            {% elif c.status == 'READY' %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-400 border border-teal-500/30">READY</span>
+                            {% elif c.status == 'PAUSED' %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">PAUSED</span>
+                            {% elif c.status == 'CANCELLED' %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">CANCELLED</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">DRAFT</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            {% set total_rec = c.eligible_count or c.total_recipients or 0 %}
+                            {% set sent = c.sent_count or 0 %}
+                            {% set pct = (sent / total_rec * 100)|round|int if total_rec > 0 else 0 %}
+                            <div class="w-36">
+                                <div class="flex items-center justify-between text-[10px] mb-1">
+                                    <span class="font-mono text-slate-300">{{ sent }} / {{ total_rec }}</span>
+                                    <span class="font-mono text-slate-400">{{ pct }}%</span>
+                                </div>
+                                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: {{ pct }}%"></div>
+                                </div>
+                                <div class="flex items-center gap-2 mt-1 text-[9px] text-slate-500 font-mono">
+                                    <span>Deliv: {{ c.delivered_count or 0 }}</span>
+                                    <span>Read: {{ c.read_count or 0 }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 text-slate-400 text-[11px]">
+                            {% if c.scheduled_at %}
+                            <div class="text-purple-400 flex items-center gap-1 font-mono">
+                                <i data-lucide="calendar" class="w-3 h-3"></i>
+                                {{ c.scheduled_at[:16]|replace('T', ' ') if c.scheduled_at is string else c.scheduled_at.strftime('%Y-%m-%d %H:%M') }}
+                            </div>
+                            <div class="text-[10px] text-slate-500">Scheduled</div>
+                            {% else %}
+                            <div>{{ c.created_at[:10] if c.created_at is string else (c.created_at.strftime('%Y-%m-%d') if c.created_at else '—') }}</div>
+                            <div class="text-[10px] text-slate-500">Created</div>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                {% if c.status in ('READY', 'PAUSED') %}
+                                <button
+                                    onclick="startCampaign('{{ c.campaign_id }}')"
+                                    class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-[11px] font-semibold transition flex items-center gap-1"
+                                    title="Start Dispatch"
+                                >
+                                    <i data-lucide="play" class="w-3 h-3"></i>
+                                    <span>Start</span>
+                                </button>
+                                {% elif c.status == 'RUNNING' %}
+                                <button
+                                    onclick="pauseCampaign('{{ c.campaign_id }}')"
+                                    class="px-2.5 py-1 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 text-[11px] font-semibold transition flex items-center gap-1"
+                                    title="Pause Dispatch"
+                                >
+                                    <i data-lucide="pause" class="w-3 h-3"></i>
+                                    <span>Pause</span>
+                                </button>
+                                {% endif %}
+
+                                <button
+                                    onclick="cloneCampaign('{{ c.campaign_id }}', '{{ c.title }}')"
+                                    class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition"
+                                    title="Clone Campaign"
+                                >
+                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                </button>
+
+                                <a
+                                    href="/admin/whatsapp/campaigns/{{ c.campaign_id }}"
+                                    class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 font-medium text-xs transition"
+                                >
+                                    Manage &rarr;
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="py-14 text-center text-slate-500">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-3 text-slate-600">
+                                <i data-lucide="megaphone" class="w-6 h-6"></i>
+                            </div>
+                            <div class="text-slate-300 font-semibold text-sm">No campaigns found</div>
+                            <div class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                                {% if search_query or (current_status and current_status != 'ALL') %}
+                                No campaigns match your current filters. Try changing or clearing your search.
+                                {% else %}
+                                Get started by creating your first WhatsApp broadcast campaign.
+                                {% endif %}
+                            </div>
+                            <div class="mt-4">
+                                <a href="/admin/whatsapp/campaigns/new" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition">
+                                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                                    <span>Create Campaign</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PAGINATION BAR -->
+        {% if total_pages > 1 %}
+        <div class="flex items-center justify-between px-4 py-3 bg-slate-950/80 border-t border-slate-800 text-xs text-slate-400">
+            <div>
+                Showing <span class="font-mono text-slate-200">{{ campaigns|length }}</span> of <span class="font-mono text-slate-200">{{ total_filtered }}</span> campaigns
+            </div>
+            <div class="flex items-center gap-1.5">
+                {% if page > 1 %}
+                <a
+                    href="/admin/whatsapp/campaigns?page={{ page - 1 }}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                    class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+                >
+                    &larr; Prev
+                </a>
+                {% endif %}
+                <span class="px-2 py-1 font-mono text-slate-400">Page {{ page }} of {{ total_pages }}</span>
+                {% if page < total_pages %}
+                <a
+                    href="/admin/whatsapp/campaigns?page={{ page + 1 }}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                    class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+                >
+                    Next &rarr;
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+async function startCampaign(id) {
+    if (!confirm("Are you sure you want to start dispatching this campaign?")) return;
+    try {
+        const res = await fetch(`/api/admin/whatsapp/campaigns/${id}/start`, { method: "POST" });
+        const data = await res.json();
+        if (res.ok) {
+            window.location.reload();
+        } else {
+            alert(data.error || "Failed to start campaign");
+        }
+    } catch (e) {
+        alert("Network error starting campaign");
+    }
+}
+
+async function pauseCampaign(id) {
+    try {
+        const res = await fetch(`/api/admin/whatsapp/campaigns/${id}/pause`, { method: "POST" });
+        const data = await res.json();
+        if (res.ok) {
+            window.location.reload();
+        } else {
+            alert(data.error || "Failed to pause campaign");
+        }
+    } catch (e) {
+        alert("Network error pausing campaign");
+    }
+}
+
+async function cloneCampaign(id, currentTitle) {
+    const newTitle = prompt("Enter a title for the duplicated campaign:", `Copy of ${currentTitle}`);
+    if (!newTitle) return;
+    try {
+        const res = await fetch(`/api/admin/whatsapp/campaigns/${id}/clone`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: newTitle })
+        });
+        const data = await res.json();
+        if (res.ok && data.campaign) {
+            window.location.href = `/admin/whatsapp/campaigns/${data.campaign.campaign_id}`;
+        } else {
+            alert(data.error || "Failed to clone campaign");
+        }
+    } catch (e) {
+        alert("Network error cloning campaign");
+    }
+}
+</script>
+{% endblock %}

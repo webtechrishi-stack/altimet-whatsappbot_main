@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+
+{% block title %}WhatsApp Test Send — ARIS Real Estate AI{% endblock %}
+{% block header_title %}WhatsApp Outbound Test Send{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- TOP WARNING BANNER -->
+    <div class="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4 flex items-start gap-3">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400 shrink-0 mt-0.5"></i>
+        <div class="text-sm">
+            <h4 class="font-semibold text-amber-300">Live Production WhatsApp Outbound</h4>
+            <p class="text-slate-300 mt-0.5 text-xs leading-relaxed">
+                Messages sent from this console are delivered directly via Meta's WhatsApp Cloud API to real mobile devices.
+                Rate limited to <strong>10 test sends per hour</strong> per administrator.
+            </p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- SEND FORM & CONFIGURATION (LEFT 7 COLS) -->
+        <div class="lg:col-span-7 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i data-lucide="send" class="w-4 h-4 text-emerald-400"></i>
+                        Compose Outbound Template
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-1">Select an approved Meta template and enter a verified recipient number</p>
+                </div>
+                <span class="text-[11px] px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono">
+                    Limit: 10 / hr
+                </span>
+            </div>
+
+            <form id="testSendForm" onsubmit="event.preventDefault(); promptConfirmSend();" class="space-y-5">
+                <!-- Recipient Phone -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                        Recipient Mobile Number <span class="text-rose-400">*</span>
+                    </label>
+                    <div class="relative">
+                        <input
+                            type="text"
+                            id="phoneInput"
+                            name="phone_number"
+                            placeholder="e.g. +91 98765 43210 or 9876543210"
+                            required
+                            oninput="updatePhonePreview(this.value)"
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono"
+                        />
+                        <div class="absolute right-3 top-3 text-xs text-slate-500" id="phoneFormatHint">
+                            IN default (+91)
+                        </div>
+                    </div>
+                    <!-- Live normalization preview -->
+                    <div id="normalizedPhoneBox" class="mt-2 text-xs flex items-center gap-2 text-slate-400">
+                        <span>E.164 Target:</span>
+                        <span id="normalizedPhoneValue" class="font-mono text-emerald-400 font-semibold">—</span>
+                    </div>
+                </div>
+
+                <!-- Template Selector -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                            Approved Template <span class="text-rose-400">*</span>
+                        </label>
+                        <button
+                            type="button"
+                            onclick="fetchLiveMetaTemplates()"
+                            id="syncMetaBtn"
+                            class="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium transition cursor-pointer"
+                        >
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> <span>Sync from Meta WABA</span>
+                        </button>
+                    </div>
+                    <select
+                        id="templateSelect"
+                        name="template_name"
+                        required
+                        onchange="onTemplateChanged()"
+                        class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    >
+                        <option value="" disabled selected>-- Select an approved WhatsApp template --</option>
+                        {% for t in templates %}
+                        <option
+                            value="{{ t.name }}"
+                            data-lang="{{ t.language_code }}"
+                            data-category="{{ t.category }}"
+                            data-body="{{ t.body_text }}"
+                            data-quality="{{ t.quality_score }}"
+                            data-desc="{{ t.description }}"
+                        >
+                            {{ t.name }} ({{ t.language_code }}) — {{ t.category }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Language Code -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                            Language Code
+                        </label>
+                        <select
+                            id="languageInput"
+                            name="language_code"
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:border-emerald-500"
+                        >
+                            <option value="en" selected>en (English)</option>
+                            <option value="en_US">en_US (English US)</option>
+                            <option value="en_GB">en_GB (English UK)</option>
+                            <option value="hi">hi (Hindi)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                            Quality Score
+                        </label>
+                        <div id="qualityScoreBadge" class="h-10 px-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center text-xs text-slate-400 font-medium">
+                            Select a template
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="pt-2">
+                    <button
+                        type="submit"
+                        id="sendBtn"
+                        class="w-full py-3.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition-all duration-200 shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Send WhatsApp Test Message</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Status Alert Box (hidden by default) -->
+            <div id="responseAlert" class="hidden rounded-xl p-4 text-xs space-y-2"></div>
+        </div>
+
+        <!-- TEMPLATE PREVIEW MOCKUP (RIGHT 5 COLS) -->
+        <div class="lg:col-span-5 space-y-6">
+            <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i data-lucide="smartphone" class="w-4 h-4 text-slate-400"></i>
+                        WhatsApp Preview
+                    </h4>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium border border-emerald-500/30">
+                        Official Meta Cloud
+                    </span>
+                </div>
+
+                <!-- Phone Chat Mockup Container -->
+                <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 min-h-[260px] flex flex-col justify-end relative overflow-hidden" style="background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 0); background-size: 16px 16px;">
+                    <!-- Message Bubble -->
+                    <div id="previewBubble" class="bg-emerald-950/70 border border-emerald-700/40 rounded-2xl rounded-bl-sm p-4 text-slate-100 text-xs shadow-md space-y-2">
+                        <div class="flex items-center justify-between text-[10px] text-emerald-400 font-semibold border-b border-emerald-800/40 pb-1">
+                            <span id="previewTemplateName">ARIS Lead Outreach</span>
+                            <span class="font-mono text-slate-400">Just now</span>
+                        </div>
+                        <p id="previewBodyText" class="text-slate-200 text-xs leading-relaxed whitespace-pre-wrap">
+                            Select a template from the dropdown to preview the message that will be dispatched to the recipient's phone.
+                        </p>
+                        <div class="flex justify-end pt-1">
+                            <span class="text-[10px] text-emerald-500 flex items-center gap-1 font-mono">
+                                Delivered <i data-lucide="check-check" class="w-3 h-3 text-emerald-400 inline"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template Metadata Details -->
+                <div class="mt-4 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs space-y-1.5">
+                    <div class="flex justify-between text-slate-400">
+                        <span>Category:</span>
+                        <span id="metaCategory" class="text-slate-200 font-mono">—</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                        <span>Description:</span>
+                        <span id="metaDesc" class="text-slate-200 truncate max-w-[200px]">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECENT TEST SENDS TABLE -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="history" class="w-4 h-4 text-emerald-400"></i>
+                    Recent Test Sends Log
+                </h3>
+                <p class="text-xs text-slate-400">Realtime delivery updates received via Meta Webhooks</p>
+            </div>
+            <a href="/admin/whatsapp/messages?source=TEST_SEND" class="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1">
+                View All Outbound Logs <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+                <thead class="text-[11px] uppercase bg-slate-950/60 text-slate-400 border-b border-slate-800">
+                    <tr>
+                        <th class="py-3 px-4">Recipient</th>
+                        <th class="py-3 px-4">Template</th>
+                        <th class="py-3 px-4">Status</th>
+                        <th class="py-3 px-4">Meta Message ID</th>
+                        <th class="py-3 px-4">Sent At</th>
+                        <th class="py-3 px-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="recentSendsBody" class="divide-y divide-slate-800/60">
+                    {% if recent_messages %}
+                    {% for m in recent_messages %}
+                    <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 px-4 font-mono font-medium text-slate-200">{{ m.phone_number }}</td>
+                        <td class="py-3 px-4 font-semibold text-emerald-400">{{ m.template_name }}</td>
+                        <td class="py-3 px-4">
+                            {% if m.status in ['DELIVERED', 'READ'] %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">{{ m.status }}</span>
+                            {% elif m.status in ['ACCEPTED', 'SENT'] %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">{{ m.status }}</span>
+                            {% elif m.status == 'FAILED' %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">{{ m.status }}</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700 text-slate-300">{{ m.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 font-mono text-slate-400 text-[11px]">
+                            {% if m.meta_message_id %}
+                            {{ m.meta_message_id[:24] }}...
+                            {% else %}
+                            <span class="text-slate-600">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-slate-400">{{ m.created_at }}</td>
+                        <td class="py-3 px-4 text-right">
+                            <a href="/admin/whatsapp/messages/{{ m.outbound_id }}" class="text-emerald-400 hover:text-emerald-300 font-medium">
+                                Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-500">
+                            No test messages dispatched yet.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIRMATION MODAL -->
+<div id="confirmModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+        <div class="flex items-center gap-3 text-amber-400">
+            <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                <i data-lucide="alert-circle" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-white">Confirm Real WhatsApp Send</h3>
+                <p class="text-xs text-slate-400">Please review before sending</p>
+            </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-2">
+            <div class="flex justify-between">
+                <span class="text-slate-400">Target Number:</span>
+                <span id="modalTargetPhone" class="font-mono text-emerald-400 font-bold">—</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">Template:</span>
+                <span id="modalTemplateName" class="text-slate-200 font-semibold">—</span>
+            </div>
+        </div>
+
+        <p class="text-xs text-slate-400 leading-relaxed">
+            This will immediately trigger Meta's Cloud API to dispatch an official WhatsApp message to the destination number.
+        </p>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+            <button
+                type="button"
+                onclick="closeConfirmModal()"
+                class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+            >
+                Cancel
+            </button>
+            <button
+                type="button"
+                id="modalSubmitBtn"
+                onclick="executeSend()"
+                class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-lg shadow-emerald-600/30 flex items-center gap-2"
+            >
+                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                <span>Yes, Send Now</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let phoneNormalizationTimer = null;
+
+    function updatePhonePreview(val) {
+        clearTimeout(phoneNormalizationTimer);
+        const clean = val.trim();
+        if (!clean) {
+            document.getElementById('normalizedPhoneValue').textContent = '—';
+            return;
+        }
+
+        phoneNormalizationTimer = setTimeout(() => {
+            fetch('/api/admin/whatsapp/phone/normalize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: clean })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const el = document.getElementById('normalizedPhoneValue');
+                if (data.is_valid) {
+                    el.textContent = `+${data.normalized} (Valid)`;
+                    el.className = 'font-mono text-emerald-400 font-semibold';
+                } else if (data.normalized) {
+                    el.textContent = `+${data.normalized} (Format warning)`;
+                    el.className = 'font-mono text-amber-400 font-semibold';
+                } else {
+                    el.textContent = 'Invalid format';
+                    el.className = 'font-mono text-rose-400 font-semibold';
+                }
+            })
+            .catch(() => {});
+        }, 200);
+    }
+
+    function onTemplateChanged() {
+        const sel = document.getElementById('templateSelect');
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return;
+
+        const lang = opt.getAttribute('data-lang') || 'en';
+        const body = opt.getAttribute('data-body') || '';
+        const quality = opt.getAttribute('data-quality') || 'PENDING';
+        const category = opt.getAttribute('data-category') || 'MARKETING';
+        const desc = opt.getAttribute('data-desc') || '';
+
+        document.getElementById('languageInput').value = lang;
+        document.getElementById('previewTemplateName').textContent = opt.value;
+        document.getElementById('previewBodyText').textContent = body;
+        document.getElementById('metaCategory').textContent = category;
+        document.getElementById('metaDesc').textContent = desc || 'Approved Meta template';
+
+        const qBadge = document.getElementById('qualityScoreBadge');
+        qBadge.innerHTML = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">${quality}</span>`;
+    }
+
+    function fetchLiveMetaTemplates() {
+        const btn = document.getElementById('syncMetaBtn');
+        btn.innerHTML = `<div class="w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div><span>Fetching...</span>`;
+
+        fetch('/api/admin/whatsapp/meta-templates')
+            .then(res => res.json())
+            .then(data => {
+                btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i><span>Synced</span>`;
+                const templates = data.data || [];
+                if (!templates.length) {
+                    alert("No templates returned from Meta. Check access token permissions or WABA templates in Meta Business Suite.");
+                    return;
+                }
+                const sel = document.getElementById('templateSelect');
+                sel.innerHTML = '<option value="" disabled selected>-- Select an approved WhatsApp template --</option>';
+                templates.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.name;
+                    opt.setAttribute('data-lang', t.language || 'en_US');
+                    opt.setAttribute('data-category', t.category || 'MARKETING');
+                    opt.setAttribute('data-quality', t.status || 'APPROVED');
+                    
+                    let bodyText = "";
+                    if (t.components) {
+                        const bodyComp = t.components.find(c => c.type === 'BODY');
+                        if (bodyComp) bodyText = bodyComp.text || "";
+                    }
+                    opt.setAttribute('data-body', bodyText);
+                    opt.setAttribute('data-desc', `Live from Meta (${t.status})`);
+                    opt.textContent = `${t.name} (${t.language}) — ${t.status}`;
+                    sel.appendChild(opt);
+                });
+                lucide.createIcons();
+                alert(`Successfully synced ${templates.length} template(s) directly from your Meta WhatsApp Business account!`);
+            })
+            .catch(err => {
+                btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3 h-3"></i><span>Retry Sync</span>`;
+                alert(`Error syncing from Meta: ${err.message}`);
+                lucide.createIcons();
+            });
+    }
+
+    function promptConfirmSend() {
+        const phone = document.getElementById('phoneInput').value.trim();
+        const sel = document.getElementById('templateSelect');
+        const template = sel.value;
+
+        if (!phone || !template) return;
+
+        document.getElementById('modalTargetPhone').textContent = phone;
+        document.getElementById('modalTemplateName').textContent = template;
+        document.getElementById('confirmModal').classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').classList.add('hidden');
+    }
+
+    function executeSend() {
+        closeConfirmModal();
+
+        const phone = document.getElementById('phoneInput').value.trim();
+        const template = document.getElementById('templateSelect').value;
+        const lang = document.getElementById('languageInput').value || 'en';
+        const sendBtn = document.getElementById('sendBtn');
+        const alertBox = document.getElementById('responseAlert');
+
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Dispatching via Meta API...</span>`;
+
+        fetch('/api/admin/whatsapp/test-send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                phone_number: phone,
+                template_name: template,
+                language_code: lang
+            })
+        })
+        .then(async res => {
+            const data = await res.json();
+            return { ok: res.ok, status: res.status, data };
+        })
+        .then(({ ok, data }) => {
+            alertBox.classList.remove('hidden');
+            if (ok && data.success) {
+                alertBox.className = 'rounded-xl p-4 text-xs space-y-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300';
+                alertBox.innerHTML = `
+                    <div class="font-bold flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                        Message Accepted by Meta Cloud API!
+                    </div>
+                    <div class="font-mono text-[11px] text-slate-300">
+                        Meta Message ID (wamid): <span class="text-white">${data.message_id || 'N/A'}</span>
+                    </div>
+                    <div class="text-slate-400 text-[11px]">
+                        Internal Outbound ID: ${data.outbound_id}. Status updates will be tracked via webhooks.
+                    </div>
+                `;
+                setTimeout(() => window.location.reload(), 2500);
+            } else {
+                const errMsg = (data.error && data.error.message) || 'Unknown error occurred';
+                const errCode = (data.error && data.error.code) || 'SEND_ERROR';
+                alertBox.className = 'rounded-xl p-4 text-xs space-y-1 bg-rose-500/10 border border-rose-500/30 text-rose-300';
+                alertBox.innerHTML = `
+                    <div class="font-bold flex items-center gap-2">
+                        <i data-lucide="x-circle" class="w-4 h-4 text-rose-400"></i>
+                        Send Failed (${errCode})
+                    </div>
+                    <div class="text-slate-300">${errMsg}</div>
+                `;
+            }
+            lucide.createIcons();
+        })
+        .catch(err => {
+            alertBox.classList.remove('hidden');
+            alertBox.className = 'rounded-xl p-4 text-xs space-y-1 bg-rose-500/10 border border-rose-500/30 text-rose-300';
+            alertBox.innerHTML = `<div>Network or Server Error: ${err.message}</div>`;
+        })
+        .finally(() => {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i><span>Send WhatsApp Test Message</span>`;
+            lucide.createIcons();
+        });
+    }
+
+    // Auto trigger preview on page load if template pre-selected
+    document.addEventListener('DOMContentLoaded', () => {
+        const sel = document.getElementById('templateSelect');
+        if (sel.value) onTemplateChanged();
+    });
+</script>
+{% endblock %}

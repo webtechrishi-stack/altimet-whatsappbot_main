@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}ARIS — AI Engine & Settings{% endblock %}
+{% block header_title %}AI Engine & System Health{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-5xl mx-auto">
+    <!-- SYSTEM DIAGNOSTICS -->
+    <div class="glass-panel p-6 rounded-2xl space-y-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+            Live System Health Diagnostics
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <!-- Database -->
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-1">
+                <span class="text-slate-500 block">Database Layer</span>
+                <div class="flex items-center gap-2">
+                    <span id="db-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    <span id="db-status-text" class="font-bold text-white text-sm">Checking...</span>
+                </div>
+                <p id="db-mode-text" class="text-[11px] text-slate-400 pt-1">Primary MongoDB / In-Memory Cache</p>
+            </div>
+
+            <!-- Meta WhatsApp Cloud API -->
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-1">
+                <span class="text-slate-500 block">Meta WhatsApp Cloud API</span>
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="font-bold text-white text-sm">Active & Connected</span>
+                </div>
+                <p class="text-[11px] text-slate-400 pt-1 font-mono">ID: 1211757728692988 (v25.0)</p>
+            </div>
+
+            <!-- AI Engine Provider -->
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-1">
+                <span class="text-slate-500 block">AI Sales Reasoning</span>
+                <div class="flex items-center gap-2">
+                    <span id="ai-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    <span id="ai-provider-text" class="font-bold text-white text-sm">Checking...</span>
+                </div>
+                <p class="text-[11px] text-slate-400 pt-1">Automatic Intent & Slot Filling</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- GLOBAL AI AUTO-REPLY & OUTBOUND SAFETY -->
+    <div class="glass-panel p-6 rounded-2xl space-y-5 border border-slate-800">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                    AI Auto-Reply Master Control & Outbound Safety
+                </h3>
+                <p class="text-xs text-slate-400 pt-1">Control automated WhatsApp AI replies and prevent unwanted outbound Meta API calls.</p>
+            </div>
+            <!-- Global Switch -->
+            <label class="flex items-center gap-3 cursor-pointer select-none">
+                <span id="global-ai-status-label" class="text-xs font-bold text-emerald-400">Global AI Enabled</span>
+                <input type="checkbox" id="global-ai-toggle" onchange="toggleGlobalAi(this.checked)" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="p-4 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-white">Strict Registered Leads Policy</span>
+                    <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">ENFORCED</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                    Outbound messages are <strong>strictly blocked</strong> for default dummy/test numbers. Meta API calls will only be dispatched to contacts explicitly added via <strong>Manual Lead Creation</strong> or <strong>Excel Campaign Import</strong>.
+                </p>
+            </div>
+
+            <div class="p-4 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-white">Owner / Admin Phone</span>
+                    <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold">WHITELISTED</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed font-mono">
+                    +91 8600079496 (Authorized for direct testing & notification alerts)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI PROMPT & REASONING SETTINGS -->
+    <div class="glass-panel p-6 rounded-2xl space-y-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="bot" class="w-4 h-4 text-purple-400"></i>
+            ARIS Conversational Persona & Guardrails
+        </h3>
+        <div class="space-y-3 text-xs">
+            <div>
+                <label class="block text-slate-400 mb-1">Agent Role & Persona</label>
+                <input type="text" readonly value="ARIS (AI Real Estate Sales Assistant) — Consultative Property Specialist" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-300">
+            </div>
+            <div>
+                <label class="block text-slate-400 mb-1">Active Target Markets</label>
+                <div class="flex gap-2">
+                    <span class="px-3 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700">Nagpur (Manish Nagar, Besa, Wardha Rd, Dharampeth)</span>
+                    <span class="px-3 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700">Pune (Hinjewadi, Wakad)</span>
+                </div>
+            </div>
+            <div>
+                <label class="block text-slate-400 mb-1">Anti-Hallucination Guardrails</label>
+                <div class="p-3 bg-slate-900/60 border border-slate-800 rounded-xl text-slate-400 leading-relaxed text-[11px]">
+                    🛡️ <strong>Strict Inventory Anchoring:</strong> The AI Agent will only recommend listings that are confirmed in the active properties catalog. Fake property names, unrealistic pricing, and non-existent addresses are explicitly prohibited.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadHealth() {
+        try {
+            const res = await fetch('/api/system/health');
+            const data = await res.json();
+
+            const isDbConnected = data.database.status === 'connected';
+            document.getElementById('db-status-text').innerText = isDbConnected ? 'Connected' : 'Degraded Mode';
+            document.getElementById('db-mode-text').innerText = data.database.mode;
+            document.getElementById('db-status-dot').className = isDbConnected ? 'w-2.5 h-2.5 rounded-full bg-emerald-400' : 'w-2.5 h-2.5 rounded-full bg-amber-400';
+
+            document.getElementById('ai-provider-text').innerText = data.ai_engine.active_provider;
+            document.getElementById('ai-status-dot').className = data.ai_engine.llm_configured ? 'w-2.5 h-2.5 rounded-full bg-emerald-400' : 'w-2.5 h-2.5 rounded-full bg-blue-400';
+        } catch (e) {
+            console.error('Failed to load health:', e);
+        }
+    }
+
+    async function loadAiSettings() {
+        try {
+            const res = await fetch('/api/settings/ai-autoreply');
+            const data = await res.json();
+            const enabled = data.global_ai_autoreply_enabled;
+            const toggle = document.getElementById('global-ai-toggle');
+            const label = document.getElementById('global-ai-status-label');
+            if (toggle) toggle.checked = enabled;
+            if (label) {
+                label.innerText = enabled ? 'Global AI Enabled' : 'Global AI Disabled (Manual Only)';
+                label.className = enabled ? 'text-xs font-bold text-emerald-400' : 'text-xs font-bold text-rose-400';
+            }
+        } catch (e) {
+            console.error('Failed to load AI settings:', e);
+        }
+    }
+
+    async function toggleGlobalAi(enabled) {
+        const label = document.getElementById('global-ai-status-label');
+        try {
+            const res = await fetch('/api/settings/ai-autoreply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: enabled })
+            });
+            const data = await res.json();
+            if (label) {
+                label.innerText = data.global_ai_autoreply_enabled ? 'Global AI Enabled' : 'Global AI Disabled (Manual Only)';
+                label.className = data.global_ai_autoreply_enabled ? 'text-xs font-bold text-emerald-400' : 'text-xs font-bold text-rose-400';
+            }
+        } catch (e) {
+            console.error('Failed to toggle global AI:', e);
+            loadAiSettings();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadHealth();
+        loadAiSettings();
+    });
+</script>
+{% endblock %}

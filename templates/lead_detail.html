@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}ARIS — Lead 360 & Conversation Hub{% endblock %}
+{% block header_title %}Lead 360 & Conversation Hub{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto pb-8">
+    <!-- Top Bar -->
+    <div class="flex items-center justify-between">
+        <a href="/dashboard/leads" class="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-white transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Back to Leads Pipeline
+        </a>
+        <div class="flex items-center gap-3">
+            <a href="/api/conversations/{{ conversation.conversation_id }}/export?format=txt" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition">
+                <i data-lucide="download" class="w-3.5 h-3.5 text-slate-400"></i>
+                Export Transcript (TXT)
+            </a>
+            <a href="/api/conversations/{{ conversation.conversation_id }}/export?format=csv" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-400"></i>
+                Export (CSV)
+            </a>
+        </div>
+    </div>
+
+    <!-- MAIN PROFILE HEADER CARD -->
+    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-emerald-500/20">
+                    {{ (lead.name or 'C')[:1] }}
+                </div>
+                <div>
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-xl font-black text-white tracking-tight">{{ lead.name or 'Valued Client' }}</h2>
+                        <!-- Lead Temperature Badge -->
+                        {% set temp = sales_memory.lead_temperature or lead.lead_temperature or 'WARM' %}
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold {% if temp == 'HOT' %}bg-rose-500/20 text-rose-400 border border-rose-500/30{% elif temp == 'WARM' %}bg-amber-500/20 text-amber-400 border border-amber-500/30{% else %}bg-slate-700 text-slate-300{% endif %}">
+                            {{ temp }}
+                        </span>
+                        <!-- Lead Score Badge -->
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            Score {{ lead.lead_score or 0 }}
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-4 mt-1.5 text-xs text-slate-400">
+                        <span class="font-mono text-slate-300">📱 +{{ lead.wa_id }}</span>
+                        <span>•</span>
+                        <span>Stage: <strong class="text-emerald-400">{{ conversation.sales_stage or lead.sales_stage }}</strong></span>
+                        <span>•</span>
+                        <span>Visit Readiness: <strong class="text-emerald-400">{{ conversation.visit_readiness_score or sales_memory.visit_readiness_score or 0 }}/100</strong></span>
+                        <span>•</span>
+                        <span>Next Action: <span class="font-mono text-cyan-400 font-semibold">{{ sales_memory.next_best_action or 'DISCOVER_REQUIREMENT' }}</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stage Selector -->
+            <div class="flex items-center gap-3">
+                <select id="detail-stage-select" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500">
+                    {% for st in ['NEW', 'DISCOVERY', 'QUALIFIED', 'PROPERTY_RECOMMENDED', 'ENGAGED', 'VISIT_PITCHED', 'VISIT_NEGOTIATING', 'VISIT_BOOKED', 'VISIT_COMPLETED', 'FOLLOW_UP', 'WON', 'LOST'] %}
+                        <option value="{{ st }}" {% if (conversation.sales_stage or lead.sales_stage) == st %}selected{% endif %}>{{ st }}</option>
+                    {% endfor %}
+                </select>
+                <button onclick="saveLeadStage()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition">
+                    Update Stage
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2-COLUMN LAYOUT: MEMORY & INTELLIGENCE (LEFT) + LIVE CONVERSATION (RIGHT) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: CUSTOMER MEMORY & SALES INTELLIGENCE (5 cols) -->
+        <div class="lg:col-span-5 space-y-6">
+
+            <!-- Customer Stated Requirements Card -->
+            <div class="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+                        Customer Memory (Verified Facts)
+                    </h3>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Survives Restarts</span>
+                </div>
+
+                <!-- Memory Summary Quote -->
+                {% set summary_text = customer_memory.customer_summary or conversation.summary %}
+                {% if summary_text %}
+                <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 italic leading-relaxed">
+                    "{{ summary_text }}"
+                </div>
+                {% endif %}
+
+                <!-- Core Grid -->
+                {% set req = customer_memory.requirements or {} %}
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-500 block text-[11px] mb-0.5">Target City</span>
+                        <span class="font-bold text-white">{{ req.city or lead.preferred_city or 'Not Specified' }}</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-500 block text-[11px] mb-0.5">Locality</span>
+                        <span class="font-bold text-white">{{ req.locality or lead.preferred_location or 'Any Locality' }}</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-500 block text-[11px] mb-0.5">BHK Configuration</span>
+                        <span class="font-bold text-white">{{ req.bhk or lead.bhk or 'Flexible' }}</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-500 block text-[11px] mb-0.5">Budget Maximum</span>
+                        <span class="font-bold text-emerald-400">{% if req.budget_max or lead.budget_max %}₹{{ req.budget_max or lead.budget_max }} Lakhs{% else %}Flexible{% endif %}</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-500 block text-[11px] mb-0.5">Buying Purpose</span>
+                        <span class="font-bold text-white">{{ req.purpose or 'End Use' }}</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-500 block text-[11px] mb-0.5">Possession Timeline</span>
+                        <span class="font-bold text-white">{{ req.timeline or 'Immediate / Flexible' }}</span>
+                    </div>
+                </div>
+
+                <!-- Stated Preferences -->
+                <div class="pt-1">
+                    <span class="text-[11px] font-semibold text-slate-400 block mb-1.5">Stated Preferences:</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        {% for pref in (customer_memory.preferences or []) %}
+                            <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-medium">
+                                {{ pref }}
+                            </span>
+                        {% else %}
+                            <span class="text-xs text-slate-500 italic">No specific preferences stated yet.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales Intelligence & Objections Card -->
+            <div class="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="target" class="w-4 h-4 text-cyan-400"></i>
+                        Sales Intelligence & Objections
+                    </h3>
+                </div>
+
+                <!-- Next Best Action Banner -->
+                <div class="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-xs">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] uppercase font-bold tracking-wider text-cyan-400">Next Best Action</span>
+                        <span class="text-[10px] text-slate-400 font-mono">Readiness {{ sales_memory.visit_readiness_score or conversation.visit_readiness_score or 0 }}%</span>
+                    </div>
+                    <p class="font-bold text-white">{{ sales_memory.next_best_action or 'DISCOVER_REQUIREMENT' }}</p>
+                </div>
+
+                <!-- Open Objections -->
+                <div>
+                    <span class="text-[11px] font-semibold text-slate-400 block mb-1.5">Customer Objections:</span>
+                    <div class="space-y-1.5">
+                        {% for obj in (customer_memory.objections or []) %}
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800 text-xs">
+                                <span class="font-bold text-amber-400">{{ obj.type }}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold {% if obj.status == 'OPEN' %}bg-amber-500/20 text-amber-300{% else %}bg-emerald-500/20 text-emerald-300{% endif %}">
+                                    {{ obj.status }}
+                                </span>
+                            </div>
+                        {% else %}
+                            <span class="text-xs text-slate-500 italic">No objections raised.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Recommended Properties -->
+                <div>
+                    <span class="text-[11px] font-semibold text-slate-400 block mb-1.5">Recommended Projects:</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        {% for p in (customer_memory.recommended_properties or []) %}
+                            <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs text-emerald-400 font-medium">
+                                {{ p }}
+                            </span>
+                        {% else %}
+                            <span class="text-xs text-slate-500 italic">None recommended yet.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: CONVERSATION TIMELINE & CHAT DESK (7 cols) -->
+        <div class="lg:col-span-7 flex flex-col glass-panel rounded-2xl border border-slate-800 h-[680px] overflow-hidden">
+
+            <!-- Chat Header & Human Takeover Toggle -->
+            <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-xs">
+                        💬
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-xs text-white leading-none">{{ lead.name or 'Customer' }}</h4>
+                        <span class="font-mono text-[10px] text-slate-400">+{{ lead.wa_id }}</span>
+                    </div>
+                </div>
+
+                <!-- Human Takeover Control -->
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <span class="text-xs font-bold text-slate-300">Human Takeover:</span>
+                        <input type="checkbox" id="takeover-toggle" onchange="toggleTakeover(this.checked)" {% if conversation.human_takeover %}checked{% endif %} class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Messages Timeline Bubble Area -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-950/40">
+                {% for m in messages %}
+                    {% set st = (m.sender_type or 'CUSTOMER')|upper %}
+                    {% set is_customer = (st == 'CUSTOMER' or m.role == 'user') %}
+                    {% set is_human = (st == 'HUMAN') %}
+                    {% set is_ai = (st == 'AI' or m.role == 'assistant') %}
+                    {% set is_system = (st == 'SYSTEM') %}
+
+                    <div class="flex flex-col {% if is_customer %}items-start{% else %}items-end{% endif %}">
+                        <!-- Sender Badge -->
+                        <div class="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400 mb-1 px-1">
+                            {% if is_customer %}
+                                <span>👤 {{ lead.name or 'Customer' }}</span>
+                            {% elif is_human %}
+                                <span class="text-blue-400">👨‍💼 Sales Rep (Human)</span>
+                            {% elif is_ai %}
+                                <span class="text-emerald-400">🤖 ARIS AI Sales Agent</span>
+                            {% else %}
+                                <span class="text-slate-400">⚙️ Campaign / System</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Bubble -->
+                        <div class="max-w-md rounded-2xl px-4 py-2.5 text-xs shadow-md leading-relaxed whitespace-pre-wrap
+                            {% if is_customer %}
+                                bg-slate-900 text-slate-200 border border-slate-800 rounded-bl-none
+                            {% elif is_human %}
+                                bg-blue-600 text-white rounded-br-none
+                            {% elif is_ai %}
+                                bg-emerald-600 text-white rounded-br-none
+                            {% else %}
+                                bg-slate-800 text-slate-300 border border-slate-700
+                            {% endif %}">
+                            {{ m.text or m.content }}
+
+                            <!-- Timestamp & Status -->
+                            <div class="flex items-center justify-end gap-1 text-[9px] mt-1.5 opacity-80 font-mono">
+                                <span>{{ m.created_at[:16] if m.created_at else '' }}</span>
+                                {% if not is_customer and m.status %}
+                                    <span>• {{ m.status|upper }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                        <i data-lucide="message-square" class="w-8 h-8 text-slate-700 mb-2"></i>
+                        <p>No messages recorded yet in this conversation.</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Message Composer -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900/60 shrink-0">
+                <form onsubmit="handleSendMessage(event)" class="flex items-center gap-3">
+                    <input type="text" id="manual-input" placeholder="Type a reply to send directly to customer's WhatsApp..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                    <button type="submit" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition">
+                        <span>Send</span>
+                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                    </button>
+                </form>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const conversationId = "{{ conversation.conversation_id }}";
+    const waId = "{{ lead.wa_id }}";
+
+    // Auto-scroll messages to bottom
+    const msgBox = document.getElementById('messages-container');
+    if (msgBox) {
+        msgBox.scrollTop = msgBox.scrollHeight;
+    }
+
+    // Mark conversation as read on view
+    if (conversationId) {
+        fetch(`/api/conversations/${conversationId}/read`, { method: 'POST' });
+    }
+
+    async function toggleTakeover(active) {
+        try {
+            await fetch(`/api/conversations/${conversationId}/takeover`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active: active })
+            });
+        } catch (e) {
+            console.error('Failed to toggle takeover:', e);
+        }
+    }
+
+    async function handleSendMessage(e) {
+        e.preventDefault();
+        const input = document.getElementById('manual-input');
+        const text = input.value.trim();
+        if (!text || !conversationId) return;
+
+        input.value = '';
+
+        try {
+            const res = await fetch(`/api/conversations/${conversationId}/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wa_id: waId, text: text })
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Send failed: ' + (data.error || 'Unknown'));
+            }
+        } catch (e) {
+            alert('Send error: ' + e);
+        }
+    }
+
+    async function saveLeadStage() {
+        const stage = document.getElementById('detail-stage-select').value;
+        try {
+            const res = await fetch('/api/leads/{{ lead_id }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sales_stage: stage })
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error updating stage: ' + (data.error || 'Failed'));
+            }
+        } catch (e) {
+            alert('Error: ' + e);
+        }
+    }
+</script>
+{% endblock %}
