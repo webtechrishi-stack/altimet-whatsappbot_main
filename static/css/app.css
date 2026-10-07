@@ -173,3 +173,29 @@ html:not(.dark) select:not([class*="bg-"]) {
 .pulse-dot {
     animation: pulse-ring 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
+
+/* Mobile & Touch Utilities */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Smooth Touch Scrolling on iOS & Android */
+.overflow-x-auto, .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent auto-zoom on input focus on iOS Safari */
+@media screen and (max-width: 768px) {
+    input, select, textarea {
+        font-size: 14px;
+    }
+}
+
+/* Responsive Touch Targets */
+button, a, input, select {
+    -webkit-tap-highlight-color: transparent;
+}

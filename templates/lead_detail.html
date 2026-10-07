@@ -6,15 +6,15 @@
 {% block content %}
 <div class="space-y-6 max-w-7xl mx-auto pb-8">
     <!-- Top Bar -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <a href="/dashboard/leads" class="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-white transition">
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             Back to Leads Pipeline
         </a>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
             <a href="/api/conversations/{{ conversation.conversation_id }}/export?format=txt" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition">
                 <i data-lucide="download" class="w-3.5 h-3.5 text-slate-400"></i>
-                Export Transcript (TXT)
+                Export (TXT)
             </a>
             <a href="/api/conversations/{{ conversation.conversation_id }}/export?format=csv" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition">
                 <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-400"></i>
@@ -24,15 +24,15 @@
     </div>
 
     <!-- MAIN PROFILE HEADER CARD -->
-    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div class="flex items-center gap-4">
-                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-emerald-500/20">
+    <div class="glass-panel p-5 sm:p-6 rounded-2xl border border-slate-800">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white text-xl sm:text-2xl font-black shadow-lg shadow-emerald-500/20 shrink-0">
                     {{ (lead.name or 'C')[:1] }}
                 </div>
                 <div>
-                    <div class="flex items-center gap-3">
-                        <h2 class="text-xl font-black text-white tracking-tight">{{ lead.name or 'Valued Client' }}</h2>
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <h2 class="text-lg sm:text-xl font-black text-white tracking-tight">{{ lead.name or 'Valued Client' }}</h2>
                         <!-- Lead Temperature Badge -->
                         {% set temp = sales_memory.lead_temperature or lead.lead_temperature or 'WARM' %}
                         <span class="px-2.5 py-0.5 rounded-full text-xs font-bold {% if temp == 'HOT' %}bg-rose-500/20 text-rose-400 border border-rose-500/30{% elif temp == 'WARM' %}bg-amber-500/20 text-amber-400 border border-amber-500/30{% else %}bg-slate-700 text-slate-300{% endif %}">
@@ -43,26 +43,26 @@
                             Score {{ lead.lead_score or 0 }}
                         </span>
                     </div>
-                    <div class="flex flex-wrap items-center gap-4 mt-1.5 text-xs text-slate-400">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs text-slate-400">
                         <span class="font-mono text-slate-300">📱 +{{ lead.wa_id }}</span>
-                        <span>•</span>
+                        <span class="hidden sm:inline">•</span>
                         <span>Stage: <strong class="text-emerald-400">{{ conversation.sales_stage or lead.sales_stage }}</strong></span>
-                        <span>•</span>
+                        <span class="hidden sm:inline">•</span>
                         <span>Visit Readiness: <strong class="text-emerald-400">{{ conversation.visit_readiness_score or sales_memory.visit_readiness_score or 0 }}/100</strong></span>
-                        <span>•</span>
-                        <span>Next Action: <span class="font-mono text-cyan-400 font-semibold">{{ sales_memory.next_best_action or 'DISCOVER_REQUIREMENT' }}</span></span>
+                        <span class="hidden sm:inline">•</span>
+                        <span>Next: <span class="font-mono text-cyan-400 font-semibold">{{ sales_memory.next_best_action or 'DISCOVER_REQUIREMENT' }}</span></span>
                     </div>
                 </div>
             </div>
 
             <!-- Quick Stage Selector -->
-            <div class="flex items-center gap-3">
-                <select id="detail-stage-select" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500">
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <select id="detail-stage-select" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 flex-1 sm:flex-none">
                     {% for st in ['NEW', 'DISCOVERY', 'QUALIFIED', 'PROPERTY_RECOMMENDED', 'ENGAGED', 'VISIT_PITCHED', 'VISIT_NEGOTIATING', 'VISIT_BOOKED', 'VISIT_COMPLETED', 'FOLLOW_UP', 'WON', 'LOST'] %}
                         <option value="{{ st }}" {% if (conversation.sales_stage or lead.sales_stage) == st %}selected{% endif %}>{{ st }}</option>
                     {% endfor %}
                 </select>
-                <button onclick="saveLeadStage()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition">
+                <button onclick="saveLeadStage()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition whitespace-nowrap">
                     Update Stage
                 </button>
             </div>

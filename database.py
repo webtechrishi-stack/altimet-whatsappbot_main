@@ -763,6 +763,14 @@ class MongoDB:
     def events(self) -> Collection:
         return self.db["events"]
 
+    @property
+    def knowledge_documents(self) -> Collection:
+        return self.db["knowledge_documents"]
+
+    @property
+    def document_chunks(self) -> Collection:
+        return self.db["document_chunks"]
+
 
 def get_db() -> MongoDB:
     """Returns singleton MongoDB manager."""
@@ -2435,6 +2443,12 @@ class PropertyRepository:
             return None
         clean_id = str(prop_id).strip().upper()
         updates["updated_at"] = datetime.now(timezone.utc)
+        if "price_lakhs" in updates and "price_display" not in updates:
+            try:
+                pval = float(updates["price_lakhs"])
+                updates["price_display"] = f"₹{pval / 100.0:.2f} Cr" if pval >= 100 else f"₹{pval:.1f} Lakhs"
+            except Exception:
+                pass
         try:
             self._db_manager.properties.update_one({"id": clean_id}, {"$set": updates})
             doc = self._db_manager.properties.find_one({"id": clean_id})
@@ -3724,6 +3738,20 @@ class VectorStoreManager:
                 print(f"[VECTOR_DB] Loaded {len(VectorStoreManager._chunks_cache)} seed knowledge chunks from storage.")
             except Exception as ex:
                 print(f"[VECTOR_DB ERROR] Failed to load knowledge_store.json: {ex}")
+
+        # Also load persisted chunks from MongoDB Atlas collection
+        try:
+            db_conn = get_db()
+            if db_conn.is_connected():
+                mongo_chunks = list(db_conn.db["document_chunks"].find())
+                for chk in mongo_chunks:
+                    chk.pop("_id", None)
+                    self.upsert_chunk(chk)
+                if mongo_chunks:
+                    print(f"[VECTOR_DB] Loaded {len(mongo_chunks)} knowledge chunks from MongoDB Atlas.")
+        except Exception as ex:
+            print(f"[VECTOR_DB NOTICE] Could not load chunks from MongoDB: {ex}")
+
         VectorStoreManager._initialized = True
 
     def upsert_chunk(self, chunk: Dict[str, Any]) -> bool:
@@ -3801,18 +3829,132 @@ class VectorStoreManager:
     def count_chunks(self) -> int:
         return len(VectorStoreManager._chunks_cache)
 
+    def delete_chunks_by_document(self, doc_id: str):
+        VectorStoreManager._chunks_cache = [
+            c for c in VectorStoreManager._chunks_cache
+            if c.get("document_id") != doc_id and c.get("metadata", {}).get("document_id") != doc_id
+        ]
+
 
 class KnowledgeRepository:
+    _cache_docs: Dict[str, Dict[str, Any]] = {}
+
     def __init__(self):
         self._db = get_db()
 
     def list_documents(self) -> List[Dict[str, Any]]:
         if self._db.is_connected():
             try:
-                return list(self._db.knowledge_documents.find().sort("created_at", -1))
+                docs = list(self._db.knowledge_documents.find().sort("created_at", -1))
+                for d in docs:
+                    self._cache_docs[d.get("id")] = d
+                return docs
             except Exception:
                 pass
-        return []
+        return list(self._cache_docs.values())
+
+    def get_by_id(self, doc_id: str) -> Optional[Dict[str, Any]]:
+        if not doc_id:
+            return None
+        if self._db.is_connected():
+            try:
+                d = self._db.knowledge_documents.find_one({"id": doc_id})
+                if d:
+                    self._cache_docs[doc_id] = d
+                    return d
+            except Exception:
+                pass
+        return self._cache_docs.get(doc_id)
+
+    def create_document(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        doc_obj = KnowledgeDocument.from_dict(data) if hasattr(KnowledgeDocument, "from_dict") else data
+        doc_dict = doc_obj.to_dict() if hasattr(doc_obj, "to_dict") else dict(doc_obj)
+        if not doc_dict.get("id"):
+            doc_dict["id"] = f"doc_{uuid.uuid4().hex[:10]}"
+        doc_dict.setdefault("created_at", datetime.now(timezone.utc))
+
+        if self._db.is_connected():
+            try:
+                self._db.knowledge_documents.update_one(
+                    {"id": doc_dict["id"]},
+                    {"$set": doc_dict},
+                    upsert=True
+                )
+            except Exception as ex:
+                print(f"[KNOWLEDGE_REPO ERROR] Could not save document to MongoDB: {ex}")
+
+        self._cache_docs[doc_dict["id"]] = doc_dict
+        return doc_dict
+
+    def update_document(self, doc_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if not doc_id:
+            return None
+        updates["updated_at"] = datetime.now(timezone.utc)
+        if self._db.is_connected():
+            try:
+                self._db.knowledge_documents.update_one({"id": doc_id}, {"$set": updates})
+                d = self._db.knowledge_documents.find_one({"id": doc_id})
+                if d:
+                    self._cache_docs[doc_id] = d
+                    return d
+            except Exception:
+                pass
+        cached = self._cache_docs.get(doc_id)
+        if cached:
+            cached.update(updates)
+            return cached
+        return None
+
+    def delete_document(self, doc_id: str) -> bool:
+        if not doc_id:
+            return False
+        if self._db.is_connected():
+            try:
+                self._db.knowledge_documents.delete_many({"id": doc_id})
+                self._db.db["document_chunks"].delete_many({"document_id": doc_id})
+            except Exception as ex:
+                print(f"[KNOWLEDGE_REPO ERROR] Could not delete doc {doc_id}: {ex}")
+
+        self._cache_docs.pop(doc_id, None)
+        return True
+
+    def save_chunks(self, doc_id: str, chunks: List[Dict[str, Any]]) -> int:
+        if not chunks:
+            return 0
+        if self._db.is_connected():
+            try:
+                self._db.db["document_chunks"].delete_many({"document_id": doc_id})
+                self._db.db["document_chunks"].insert_many(chunks, ordered=False)
+            except Exception as ex:
+                print(f"[KNOWLEDGE_REPO ERROR] Could not save chunks: {ex}")
+        return len(chunks)
+
+    def list_chunks(self, doc_id: str) -> List[Dict[str, Any]]:
+        if not doc_id:
+            return []
+        if self._db.is_connected():
+            try:
+                return list(self._db.db["document_chunks"].find({"document_id": doc_id}).sort("chunk_index", 1))
+            except Exception:
+                pass
+        # Fallback to in-memory vector store cache
+        return [c for c in DB.vectors._chunks_cache if c.get("document_id") == doc_id or c.get("metadata", {}).get("document_id") == doc_id]
+
+    def count_documents(self) -> int:
+        if self._db.is_connected():
+            try:
+                return self._db.knowledge_documents.count_documents({})
+            except Exception:
+                pass
+        return len(self._cache_docs)
+
+    def count_chunks(self) -> int:
+        if self._db.is_connected():
+            try:
+                return self._db.db["document_chunks"].count_documents({})
+            except Exception:
+                pass
+        return 0
 
 
 # =============================================================================

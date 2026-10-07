@@ -6,10 +6,10 @@
 {% block content %}
 <div class="space-y-6 max-w-7xl mx-auto">
     <!-- FILTER BAR -->
-    <div class="glass-panel p-5 rounded-2xl flex items-center justify-between">
+    <div class="glass-panel p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div class="flex items-center gap-2 text-xs">
-            <span class="text-slate-400 mr-2 font-medium">Status Filter:</span>
-            <select id="visit-status-filter" onchange="loadVisits()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2">
+            <span class="text-slate-400 font-medium whitespace-nowrap">Status:</span>
+            <select id="visit-status-filter" onchange="loadVisits()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 flex-1 sm:flex-none">
                 <option value="ALL">All Visits</option>
                 <option value="scheduled" selected>Scheduled</option>
                 <option value="confirmed">Confirmed</option>
@@ -18,7 +18,7 @@
                 <option value="cancelled">Cancelled</option>
             </select>
         </div>
-        <span id="visits-count-badge" class="text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 font-semibold">
+        <span id="visits-count-badge" class="text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 font-semibold text-center sm:text-left w-fit">
             Loading...
         </span>
     </div>
@@ -26,7 +26,7 @@
     <!-- VISITS TABLE -->
     <div class="glass-panel rounded-2xl overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
+            <table class="w-full min-w-[680px] text-left text-xs">
                 <thead class="bg-slate-900/80 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
                     <tr>
                         <th class="py-3.5 px-6">Customer / Lead</th>

@@ -316,7 +316,10 @@ class PropertyService:
 
     def __init__(self, property_repo: Optional[PropertyRepository] = None):
         self._repo = property_repo or DB.properties
-        self.properties = list(self._repo._cache.values())
+
+    @property
+    def properties(self) -> List[Dict[str, Any]]:
+        return list(self._repo._cache.values())
 
     def get_all_properties(self, limit: int = 4) -> List[Dict[str, Any]]:
         return self._repo.list_properties(limit=limit)
@@ -656,6 +659,88 @@ class RAGService:
             context_parts.append(f"[Verified Factsheet {idx} ({title})]:\n{content}")
 
         return "\n\n".join(context_parts)
+
+    def retrieve_hits(self, query: str, property_id: Optional[str] = None, top_k: int = 4) -> List[Dict[str, Any]]:
+        if not query:
+            return []
+        query_vec = self.embedder.encode(query)
+        hits = self.vector_store.search(query_vec, top_k=top_k, filter_property_id=property_id)
+        results = []
+        for h in hits:
+            score = h.get("score", 0.0)
+            meta = h.get("metadata", {})
+            results.append({
+                "id": h.get("id"),
+                "content": h.get("content", ""),
+                "title": meta.get("filename") or meta.get("title") or h.get("property_id") or "Project Factsheet",
+                "filename": meta.get("filename", ""),
+                "property_id": h.get("property_id") or meta.get("property_id"),
+                "similarity": round(float(score), 4),
+                "chunk_index": meta.get("chunk_index", 0),
+                "token_count": len(h.get("content", "").split())
+            })
+        return results
+
+    def ingest_text_content(
+        self,
+        title: str,
+        text: str,
+        property_id: Optional[str] = None,
+        document_type: str = "brochure",
+        filename: str = "",
+        doc_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        import uuid
+        if not text:
+            return {"success": False, "error": "Empty content"}
+
+        target_doc_id = doc_id or f"doc_{uuid.uuid4().hex[:10]}"
+        paragraphs = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 25]
+        if not paragraphs:
+            paragraphs = [text.strip()]
+
+        created_chunks = []
+        for idx, para in enumerate(paragraphs):
+            chk_id = f"chk_{target_doc_id[-6:]}_{idx}"
+            emb = self.embedder.encode(para)
+            chunk_doc = {
+                "id": chk_id,
+                "document_id": target_doc_id,
+                "chunk_index": idx,
+                "content": para,
+                "property_id": property_id,
+                "metadata": {
+                    "document_id": target_doc_id,
+                    "filename": filename or title,
+                    "title": title,
+                    "property_id": property_id,
+                    "chunk_index": idx
+                },
+                "embedding": emb
+            }
+            created_chunks.append(chunk_doc)
+            self.vector_store.upsert_chunk(chunk_doc)
+
+        DB.knowledge.save_chunks(target_doc_id, created_chunks)
+
+        doc_record = {
+            "id": target_doc_id,
+            "title": title,
+            "filename": filename or f"{title}.txt",
+            "document_type": document_type,
+            "property_id": property_id,
+            "content": text[:5000],
+            "chunk_count": len(created_chunks),
+            "size_bytes": len(text.encode("utf-8")),
+            "status": "ready"
+        }
+        DB.knowledge.create_document(doc_record)
+
+        return {
+            "success": True,
+            "document": doc_record,
+            "chunk_count": len(created_chunks)
+        }
 
     def ingest_documents(self, docs_dir: str = "storage/documents") -> int:
         if not os.path.exists(docs_dir):

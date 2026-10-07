@@ -1,34 +1,45 @@
 {% extends "base.html" %}
 
-{% block title %}ARIS — Property Catalog{% endblock %}
+{% block title %}ARIS — Property Catalog & Inventory{% endblock %}
 {% block header_title %}Properties Catalog & Inventory{% endblock %}
 
 {% block content %}
 <div class="space-y-6 max-w-7xl mx-auto">
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast-notification" class="fixed top-5 right-5 z-50 transform transition-all duration-300 translate-y-[-100px] opacity-0 pointer-events-none">
+        <div class="glass-panel px-4 py-3 rounded-xl border flex items-center gap-3 shadow-xl text-xs font-semibold" id="toast-inner">
+            <span id="toast-icon"></span>
+            <span id="toast-msg"></span>
+        </div>
+    </div>
+
     <!-- FILTERS & ADD BUTTON -->
-    <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto text-xs">
-            <select id="filter-city" onchange="loadProperties()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2">
+    <div class="glass-panel p-4 sm:p-5 rounded-2xl flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto text-xs">
+            <select id="filter-city" onchange="loadProperties()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 focus:ring-1 focus:ring-emerald-500 outline-none flex-1 sm:flex-none">
                 <option value="">All Cities</option>
                 <option value="Nagpur">Nagpur</option>
                 <option value="Pune">Pune</option>
             </select>
-            <select id="filter-bhk" onchange="loadProperties()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2">
-                <option value="">All BHK</option>
+            <select id="filter-bhk" onchange="loadProperties()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 focus:ring-1 focus:ring-emerald-500 outline-none flex-1 sm:flex-none">
+                <option value="">All Configurations</option>
                 <option value="1BHK">1 BHK</option>
                 <option value="2BHK">2 BHK</option>
                 <option value="3BHK">3 BHK</option>
                 <option value="4BHK">4 BHK</option>
+                <option value="Villa">Villa</option>
             </select>
-            <select id="filter-price" onchange="loadProperties()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2">
+            <select id="filter-price" onchange="loadProperties()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 focus:ring-1 focus:ring-emerald-500 outline-none flex-1 sm:flex-none">
                 <option value="">Any Budget</option>
-                <option value="50">Up to ₹50 Lakhs</option>
+                <option value="40">Up to ₹40 Lakhs</option>
+                <option value="60">Up to ₹60 Lakhs</option>
                 <option value="80">Up to ₹80 Lakhs</option>
                 <option value="150">Up to ₹1.5 Cr</option>
             </select>
+            <input type="text" id="filter-search" oninput="debounceSearch()" placeholder="Search title, locality..." class="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none w-full sm:w-44">
         </div>
 
-        <button onclick="openAddModal()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition">
+        <button onclick="openAddModal()" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition shrink-0">
             <i data-lucide="plus" class="w-4 h-4"></i>
             Add Property
         </button>
@@ -36,61 +47,215 @@
 
     <!-- PROPERTIES GRID -->
     <div id="properties-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="col-span-full py-12 text-center text-slate-500 text-xs">Loading properties catalog...</div>
+        <div class="col-span-full py-16 text-center text-slate-500 text-xs flex flex-col items-center gap-3">
+            <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-emerald-500"></i>
+            Loading properties catalog...
+        </div>
     </div>
 </div>
 
-<!-- ADD PROPERTY MODAL -->
-<div id="add-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-lg rounded-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+<!-- ========================================================================= -->
+<!-- ADD PROPERTY MODAL                                                        -->
+<!-- ========================================================================= -->
+<div id="add-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-xl rounded-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto border border-slate-800 shadow-2xl">
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 class="font-bold text-white text-base">Add New Property</h3>
-            <button onclick="closeAddModal()" class="text-slate-400 hover:text-white">✕</button>
-        </div>
-        <form onsubmit="handleCreateProperty(event)" class="space-y-3 text-xs">
             <div>
-                <label class="block text-slate-400 mb-1">Project / Property Title *</label>
-                <input type="text" id="prop-title" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                <h3 class="font-bold text-white text-base">Add New Property</h3>
+                <p class="text-[11px] text-slate-400">Add listing to catalog & make it instantly available to AI sales bot</p>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <button onclick="closeAddModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+        </div>
+        <form onsubmit="handleCreateProperty(event)" class="space-y-3.5 text-xs">
+            <div>
+                <label class="block text-slate-300 font-medium mb-1">Project / Property Title *</label>
+                <input type="text" id="prop-title" required placeholder="e.g. Green Meadows Residency" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-slate-400 mb-1">City *</label>
-                    <select id="prop-city" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                    <label class="block text-slate-300 font-medium mb-1">City *</label>
+                    <select id="prop-city" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
                         <option value="Nagpur">Nagpur</option>
                         <option value="Pune">Pune</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1">Locality *</label>
-                    <input type="text" id="prop-locality" required placeholder="e.g. Besa Road" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                    <label class="block text-slate-300 font-medium mb-1">Locality *</label>
+                    <input type="text" id="prop-locality" required placeholder="e.g. Manish Nagar" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
                 </div>
             </div>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                    <label class="block text-slate-400 mb-1">BHK</label>
-                    <select id="prop-bhk" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                    <label class="block text-slate-300 font-medium mb-1">Configuration *</label>
+                    <select id="prop-bhk" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
                         <option value="1BHK">1BHK</option>
                         <option value="2BHK" selected>2BHK</option>
                         <option value="3BHK">3BHK</option>
                         <option value="4BHK">4BHK</option>
+                        <option value="Villa">Villa</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1">Price (Lakhs) *</label>
-                    <input type="number" step="0.5" id="prop-price" required placeholder="55.0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                    <label class="block text-slate-300 font-medium mb-1">Property Type</label>
+                    <select id="prop-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+                        <option value="Apartment" selected>Apartment</option>
+                        <option value="Villa">Villa</option>
+                        <option value="Plot">Plot</option>
+                        <option value="Penthouse">Penthouse</option>
+                    </select>
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1">Carpet Area</label>
-                    <input type="text" id="prop-area" placeholder="950 sq.ft" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                    <label class="block text-slate-300 font-medium mb-1">Price (₹ Lakhs) *</label>
+                    <input type="number" step="0.1" id="prop-price" required placeholder="48.5" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Carpet Area</label>
+                    <input type="text" id="prop-area" placeholder="980 sq.ft" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Possession</label>
+                    <select id="prop-status" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+                        <option value="Ready to Move" selected>Ready to Move</option>
+                        <option value="Under Construction">Under Construction</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Units Available</label>
+                    <input type="number" id="prop-units" value="5" min="1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
                 </div>
             </div>
             <div>
-                <label class="block text-slate-400 mb-1">Description</label>
-                <textarea id="prop-desc" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white" placeholder="Key highlights, east-facing, luxury fittings..."></textarea>
+                <label class="block text-slate-300 font-medium mb-1">Key Amenities (comma-separated)</label>
+                <input type="text" id="prop-amenities" placeholder="Covered Parking, Lift, 24x7 Security, Clubhouse" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 outline-none">
             </div>
-            <div class="flex justify-end gap-3 pt-3">
-                <button type="button" onclick="closeAddModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
-                <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold">Save Property</button>
+            <div>
+                <label class="block text-slate-300 font-medium mb-1">Image URL (Optional)</label>
+                <input type="url" id="prop-image" placeholder="https://images.unsplash.com/photo-..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-slate-300 font-medium mb-1">Description / Highlights</label>
+                <textarea id="prop-desc" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 outline-none" placeholder="Near Metro station, east-facing Vastu compliant, modular kitchen..."></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                <button type="button" onclick="closeAddModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Cancel</button>
+                <button type="submit" id="btn-save-new" class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition flex items-center gap-2">
+                    <span>Save Property</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- EDIT PROPERTY MODAL                                                       -->
+<!-- ========================================================================= -->
+<div id="edit-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-xl rounded-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto border border-slate-800 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-white text-base">Edit Property Details</h3>
+                    <span id="edit-badge-id" class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 text-[10px] font-mono font-bold"></span>
+                </div>
+                <p class="text-[11px] text-slate-400">Updates will reflect live across CRM and WhatsApp AI assistant responses</p>
+            </div>
+            <button onclick="closeEditModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+        </div>
+        <form onsubmit="handleUpdateProperty(event)" class="space-y-3.5 text-xs">
+            <input type="hidden" id="edit-prop-id">
+
+            <div>
+                <label class="block text-slate-300 font-medium mb-1">Project / Property Title *</label>
+                <input type="text" id="edit-prop-title" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-blue-500 outline-none">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">City *</label>
+                    <select id="edit-prop-city" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+                        <option value="Nagpur">Nagpur</option>
+                        <option value="Pune">Pune</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Locality *</label>
+                    <input type="text" id="edit-prop-locality" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-blue-500 outline-none">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Configuration *</label>
+                    <select id="edit-prop-bhk" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+                        <option value="1BHK">1BHK</option>
+                        <option value="2BHK">2BHK</option>
+                        <option value="3BHK">3BHK</option>
+                        <option value="4BHK">4BHK</option>
+                        <option value="Villa">Villa</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Property Type</label>
+                    <select id="edit-prop-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+                        <option value="Apartment">Apartment</option>
+                        <option value="Villa">Villa</option>
+                        <option value="Plot">Plot</option>
+                        <option value="Penthouse">Penthouse</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Price (₹ Lakhs) *</label>
+                    <input type="number" step="0.1" id="edit-prop-price" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-blue-500 outline-none">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Carpet Area</label>
+                    <input type="text" id="edit-prop-area" placeholder="980 sq.ft" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Possession Status</label>
+                    <select id="edit-prop-status" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+                        <option value="Ready to Move">Ready to Move</option>
+                        <option value="Under Construction">Under Construction</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Units Available</label>
+                    <input type="number" id="edit-prop-units" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="block text-slate-300 font-medium mb-1">Address / Landmark</label>
+                <input type="text" id="edit-prop-address" placeholder="Plot 42, Near Manish Nagar Metro..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+            </div>
+            <div>
+                <label class="block text-slate-300 font-medium mb-1">Key Amenities (comma-separated)</label>
+                <input type="text" id="edit-prop-amenities" placeholder="Covered Parking, Lift, Gym, Swimming Pool" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+            </div>
+            <div>
+                <label class="block text-slate-300 font-medium mb-1">Image URL</label>
+                <input type="url" id="edit-prop-image" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+            </div>
+            <div>
+                <label class="block text-slate-300 font-medium mb-1">Brochure PDF URL</label>
+                <input type="url" id="edit-prop-brochure" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+            </div>
+            <div>
+                <label class="block text-slate-300 font-medium mb-1">Description / Highlights</label>
+                <textarea id="edit-prop-desc" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none"></textarea>
+            </div>
+            <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+                <button type="button" onclick="deletePropertyFromModal()" class="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition text-xs flex items-center gap-1.5 font-medium">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    Delete Property
+                </button>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Cancel</button>
+                    <button type="submit" id="btn-save-edit" class="px-5 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold transition flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                        <span>Update Property</span>
+                    </button>
+                </div>
             </div>
         </form>
     </div>
@@ -99,77 +264,171 @@
 
 {% block scripts %}
 <script>
+    let allLoadedProperties = [];
+    let searchTimeout = null;
+
+    function showToast(message, isSuccess = true) {
+        const toast = document.getElementById('toast-notification');
+        const inner = document.getElementById('toast-inner');
+        const icon = document.getElementById('toast-icon');
+        const msg = document.getElementById('toast-msg');
+
+        msg.textContent = message;
+        if (isSuccess) {
+            inner.className = 'glass-panel px-4 py-3 rounded-xl border border-emerald-500/40 bg-slate-950/90 text-emerald-300 flex items-center gap-2.5 shadow-xl text-xs font-semibold';
+            icon.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>';
+        } else {
+            inner.className = 'glass-panel px-4 py-3 rounded-xl border border-rose-500/40 bg-slate-950/90 text-rose-300 flex items-center gap-2.5 shadow-xl text-xs font-semibold';
+            icon.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 text-rose-400"></i>';
+        }
+        lucide.createIcons();
+
+        toast.classList.remove('translate-y-[-100px]', 'opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+            toast.classList.add('translate-y-[-100px]', 'opacity-0', 'pointer-events-none');
+        }, 3500);
+    }
+
+    function debounceSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            filterAndRender();
+        }, 200);
+    }
+
     async function loadProperties() {
         const city = document.getElementById('filter-city').value;
         const bhk = document.getElementById('filter-bhk').value;
         const price = document.getElementById('filter-price').value;
 
         let url = '/api/properties?';
-        if (city) url += `&city=${city}`;
-        if (bhk) url += `&bhk=${bhk}`;
-        if (price) url += `&max_price=${price}`;
+        if (city) url += `&city=${encodeURIComponent(city)}`;
+        if (bhk) url += `&bhk=${encodeURIComponent(bhk)}`;
+        if (price) url += `&max_price=${encodeURIComponent(price)}`;
 
         try {
             const res = await fetch(url);
             const data = await res.json();
-            renderProperties(data.properties || []);
+            allLoadedProperties = data.properties || [];
+            filterAndRender();
         } catch (e) {
             console.error('Error loading properties:', e);
+            document.getElementById('properties-grid').innerHTML = '<div class="col-span-full py-12 text-center text-rose-400 text-xs">Failed to load properties. Check server connection.</div>';
         }
+    }
+
+    function filterAndRender() {
+        const query = (document.getElementById('filter-search')?.value || '').toLowerCase().trim();
+        let filtered = allLoadedProperties;
+
+        if (query) {
+            filtered = filtered.filter(p => 
+                (p.title || '').toLowerCase().includes(query) ||
+                (p.locality || '').toLowerCase().includes(query) ||
+                (p.city || '').toLowerCase().includes(query) ||
+                (p.id || '').toLowerCase().includes(query)
+            );
+        }
+
+        renderProperties(filtered);
     }
 
     function renderProperties(props) {
         const container = document.getElementById('properties-grid');
         if (!props.length) {
-            container.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 text-xs">No properties match your filters.</div>';
+            container.innerHTML = `
+                <div class="col-span-full py-16 text-center text-slate-500 text-xs flex flex-col items-center gap-2">
+                    <i data-lucide="home" class="w-8 h-8 stroke-1 text-slate-600"></i>
+                    <span>No properties match your current filters.</span>
+                    <button onclick="document.getElementById('filter-city').value='';document.getElementById('filter-bhk').value='';document.getElementById('filter-price').value='';document.getElementById('filter-search').value='';loadProperties();" class="text-emerald-400 underline mt-1">Clear filters</button>
+                </div>
+            `;
+            lucide.createIcons();
             return;
         }
 
         container.innerHTML = props.map(p => {
             const img = (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80';
+            const priceText = p.price_display || ('₹' + p.price_lakhs + ' Lakhs');
+            const safeTitle = (p.title || '').replace(/'/g, "\\'");
+            const amenitiesList = Array.isArray(p.amenities) ? p.amenities.slice(0, 3).join(', ') : '';
+
             return `
-                <div class="glass-panel rounded-2xl overflow-hidden group hover:border-slate-700 transition flex flex-col justify-between">
+                <div class="glass-panel rounded-2xl overflow-hidden group hover:border-slate-700 transition flex flex-col justify-between shadow-lg">
                     <div>
-                        <div class="h-44 relative overflow-hidden">
-                            <img src="${img}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                            <div class="absolute top-3 right-3 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold text-emerald-400 border border-emerald-500/30">
-                                ${p.price_display || ('₹' + p.price_lakhs + ' Lakhs')}
+                        <!-- CARD HEADER & IMAGE -->
+                        <div class="h-44 relative overflow-hidden bg-slate-900">
+                            <img src="${img}" alt="${p.title}" onerror="this.src='https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80'" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            <div class="absolute top-3 right-3 bg-slate-950/85 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold text-emerald-400 border border-emerald-500/30 shadow-md">
+                                ${priceText}
                             </div>
-                            <div class="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-semibold text-slate-300">
+                            <div class="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] font-semibold text-slate-200 border border-slate-700/60">
                                 ${p.possession_status || 'Available'}
                             </div>
                         </div>
-                        <div class="p-5 space-y-2">
-                            <div class="flex items-center justify-between">
-                                <h4 class="font-bold text-sm text-white truncate">${p.title}</h4>
-                                <span class="font-mono text-[10px] text-slate-500">${p.id}</span>
+
+                        <!-- CARD BODY -->
+                        <div class="p-5 space-y-2.5">
+                            <div class="flex items-start justify-between gap-2">
+                                <h4 class="font-bold text-sm text-white line-clamp-1 group-hover:text-emerald-400 transition" title="${p.title}">${p.title}</h4>
+                                <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 shrink-0">${p.id}</span>
                             </div>
-                            <p class="text-xs text-slate-400 flex items-center gap-1">
-                                📍 ${p.locality}, ${p.city}
+
+                            <p class="text-xs text-slate-400 flex items-center gap-1.5">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-500 shrink-0"></i>
+                                <span class="truncate">${p.locality || 'Prime Location'}, ${p.city}</span>
                             </p>
-                            <div class="flex items-center gap-3 text-xs text-slate-300 pt-1">
-                                <span class="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">${p.bhk} ${p.type}</span>
-                                <span class="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">${p.carpet_area}</span>
+
+                            <div class="flex flex-wrap items-center gap-2 text-xs text-slate-300 pt-1">
+                                <span class="bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/80 font-medium">${p.bhk || '2BHK'} ${p.type || 'Apartment'}</span>
+                                <span class="bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/80 text-slate-400">${p.carpet_area || 'Carpet Area'}</span>
                             </div>
-                            <p class="text-[11px] text-slate-400 line-clamp-2 pt-1">
-                                ${p.description || ''}
+
+                            ${amenitiesList ? `
+                                <p class="text-[11px] text-slate-400 flex items-center gap-1 truncate pt-0.5">
+                                    <i data-lucide="sparkles" class="w-3 h-3 text-amber-400 shrink-0"></i>
+                                    <span class="truncate">${amenitiesList}</span>
+                                </p>
+                            ` : ''}
+
+                            <p class="text-[11px] text-slate-400 line-clamp-2 pt-1 leading-relaxed">
+                                ${p.description || 'Verified residential project curated for ARIS real estate advisory catalog.'}
                             </p>
                         </div>
                     </div>
-                    <div class="p-4 border-t border-slate-800/80 bg-slate-950/40 flex items-center justify-between">
-                        ${p.brochure_url ? `
-                            <a href="${p.brochure_url}" target="_blank" class="text-xs text-emerald-400 hover:underline flex items-center gap-1">
-                                <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                                Brochure PDF
-                            </a>
-                        ` : '<span class="text-[11px] text-slate-500">Brochure on request</span>'}
-                        <span class="text-[11px] text-slate-400">${p.inventory_count || 3} units left</span>
+
+                    <!-- CARD FOOTER & ACTIONS -->
+                    <div class="p-4 border-t border-slate-800/80 bg-slate-950/50 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <button onclick="openEditModal('${p.id}')" class="px-2.5 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-semibold flex items-center gap-1.5 transition" title="Edit property details">
+                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                                <span>Edit</span>
+                            </button>
+                            <button onclick="handleDeleteProperty('${p.id}', '${safeTitle}')" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition" title="Delete property">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 font-medium">${p.inventory_count ?? 3} units</span>
+                            ${p.brochure_url ? `
+                                <div>
+                                    <a href="${p.brochure_url}" target="_blank" class="text-[10px] text-emerald-400 hover:underline flex items-center gap-0.5 justify-end">
+                                        <i data-lucide="file-text" class="w-3 h-3"></i> Brochure
+                                    </a>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
             `;
         }).join('');
         lucide.createIcons();
     }
+
+    // =========================================================================
+    // MODAL CONTROL & FORM HANDLERS
+    // =========================================================================
 
     function openAddModal() {
         document.getElementById('add-modal').classList.remove('hidden');
@@ -179,16 +438,62 @@
         document.getElementById('add-modal').classList.add('hidden');
     }
 
+    function openEditModal(propId) {
+        const prop = allLoadedProperties.find(p => p.id === propId);
+        if (!prop) {
+            alert('Property details not found for ID: ' + propId);
+            return;
+        }
+
+        document.getElementById('edit-prop-id').value = prop.id;
+        document.getElementById('edit-badge-id').textContent = prop.id;
+        document.getElementById('edit-prop-title').value = prop.title || '';
+        document.getElementById('edit-prop-city').value = prop.city || 'Nagpur';
+        document.getElementById('edit-prop-locality').value = prop.locality || '';
+        document.getElementById('edit-prop-address').value = prop.address || '';
+        document.getElementById('edit-prop-bhk').value = prop.bhk || '2BHK';
+        document.getElementById('edit-prop-type').value = prop.type || 'Apartment';
+        document.getElementById('edit-prop-price').value = prop.price_lakhs || '';
+        document.getElementById('edit-prop-area').value = prop.carpet_area || '';
+        document.getElementById('edit-prop-status').value = prop.possession_status || 'Ready to Move';
+        document.getElementById('edit-prop-units').value = prop.inventory_count ?? 5;
+        document.getElementById('edit-prop-amenities').value = Array.isArray(prop.amenities) ? prop.amenities.join(', ') : (prop.amenities || '');
+        document.getElementById('edit-prop-image').value = (prop.images && prop.images[0]) || '';
+        document.getElementById('edit-prop-brochure').value = prop.brochure_url || '';
+        document.getElementById('edit-prop-desc').value = prop.description || '';
+
+        document.getElementById('edit-modal').classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function closeEditModal() {
+        document.getElementById('edit-modal').classList.add('hidden');
+    }
+
     async function handleCreateProperty(e) {
         e.preventDefault();
+        const btn = document.getElementById('btn-save-new');
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Saving...';
+        lucide.createIcons();
+
+        const amenitiesRaw = document.getElementById('prop-amenities').value;
+        const amenities = amenitiesRaw.split(',').map(s => s.trim()).filter(Boolean);
+        const imageUrl = document.getElementById('prop-image').value.trim();
+
         const payload = {
-            title: document.getElementById('prop-title').value,
+            title: document.getElementById('prop-title').value.trim(),
             city: document.getElementById('prop-city').value,
-            locality: document.getElementById('prop-locality').value,
+            locality: document.getElementById('prop-locality').value.trim(),
             bhk: document.getElementById('prop-bhk').value,
+            type: document.getElementById('prop-type').value,
             price_lakhs: parseFloat(document.getElementById('prop-price').value),
-            carpet_area: document.getElementById('prop-area').value || '950 sq.ft',
-            description: document.getElementById('prop-desc').value
+            carpet_area: document.getElementById('prop-area').value.trim() || '950 sq.ft',
+            possession_status: document.getElementById('prop-status').value,
+            inventory_count: parseInt(document.getElementById('prop-units').value) || 5,
+            amenities: amenities.length ? amenities : ["Covered Parking", "Lift", "24x7 Security"],
+            images: imageUrl ? [imageUrl] : ["https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80"],
+            description: document.getElementById('prop-desc').value.trim()
         };
 
         try {
@@ -200,13 +505,105 @@
             const data = await res.json();
             if (data.success) {
                 closeAddModal();
-                loadProperties();
+                showToast(`Property "${payload.title}" added successfully!`);
+                e.target.reset();
+                await loadProperties();
             } else {
-                alert('Failed to create: ' + (data.error || 'Unknown error'));
+                showToast('Failed to create: ' + (data.error || 'Unknown error'), false);
             }
         } catch (err) {
-            alert('Error: ' + err);
+            showToast('Network error: ' + err, false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Save Property</span>';
         }
+    }
+
+    async function handleUpdateProperty(e) {
+        e.preventDefault();
+        const propId = document.getElementById('edit-prop-id').value;
+        if (!propId) return;
+
+        const btn = document.getElementById('btn-save-edit');
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Updating...';
+        lucide.createIcons();
+
+        const amenitiesRaw = document.getElementById('edit-prop-amenities').value;
+        const amenities = amenitiesRaw.split(',').map(s => s.trim()).filter(Boolean);
+        const imageUrl = document.getElementById('edit-prop-image').value.trim();
+        const priceLakhs = parseFloat(document.getElementById('edit-prop-price').value);
+
+        const payload = {
+            title: document.getElementById('edit-prop-title').value.trim(),
+            city: document.getElementById('edit-prop-city').value,
+            locality: document.getElementById('edit-prop-locality').value.trim(),
+            address: document.getElementById('edit-prop-address').value.trim(),
+            bhk: document.getElementById('edit-prop-bhk').value,
+            type: document.getElementById('edit-prop-type').value,
+            price_lakhs: priceLakhs,
+            price_display: priceLakhs >= 100 ? `₹${(priceLakhs / 100).toFixed(2)} Cr` : `₹${priceLakhs} Lakhs`,
+            carpet_area: document.getElementById('edit-prop-area').value.trim(),
+            possession_status: document.getElementById('edit-prop-status').value,
+            inventory_count: parseInt(document.getElementById('edit-prop-units').value) || 0,
+            amenities: amenities,
+            brochure_url: document.getElementById('edit-prop-brochure').value.trim(),
+            description: document.getElementById('edit-prop-desc').value.trim()
+        };
+
+        if (imageUrl) {
+            payload.images = [imageUrl];
+        }
+
+        try {
+            const res = await fetch(`/api/properties/${encodeURIComponent(propId)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeEditModal();
+                showToast(`Property "${payload.title}" updated successfully!`);
+                await loadProperties();
+            } else {
+                showToast('Update failed: ' + (data.error || 'Unknown error'), false);
+            }
+        } catch (err) {
+            showToast('Network error: ' + err, false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Update Property</span>';
+        }
+    }
+
+    async function handleDeleteProperty(propId, propTitle) {
+        if (!confirm(`Are you sure you want to delete "${propTitle}" (${propId})? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/properties/${encodeURIComponent(propId)}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`Property ${propId} deleted.`);
+                await loadProperties();
+            } else {
+                showToast('Failed to delete property.', false);
+            }
+        } catch (err) {
+            showToast('Network error: ' + err, false);
+        }
+    }
+
+    function deletePropertyFromModal() {
+        const propId = document.getElementById('edit-prop-id').value;
+        const propTitle = document.getElementById('edit-prop-title').value;
+        if (!propId) return;
+        closeEditModal();
+        handleDeleteProperty(propId, propTitle);
     }
 
     document.addEventListener('DOMContentLoaded', loadProperties);

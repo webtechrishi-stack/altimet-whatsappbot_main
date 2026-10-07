@@ -794,7 +794,8 @@ def knowledge_view():
 @app.route("/dashboard/knowledge/<doc_id>", methods=["GET"])
 @require_auth()
 def document_detail_view(doc_id):
-    return render_template("knowledge_detail.html", active_page="knowledge", doc_id=doc_id, doc={})
+    doc = DB.knowledge.get_by_id(doc_id) or {"id": doc_id, "title": "Document", "status": "ready", "chunk_count": 0}
+    return render_template("knowledge_detail.html", active_page="knowledge", doc_id=doc_id, doc=doc)
 
 
 @app.route("/dashboard/rag/playground", methods=["GET"])
@@ -1770,6 +1771,135 @@ def api_system_health():
     })
 
 
+@app.route("/api/settings/ai-model", methods=["GET", "POST"])
+@require_auth()
+def api_settings_ai_model():
+    """Gets or updates runtime AI model configuration (in-memory, resets on restart)."""
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        new_model = str(data.get("model_name", "")).strip()
+        new_temp = data.get("temperature")
+
+        result = {"success": True, "updated": []}
+        if new_model:
+            gemini_provider.model_name = new_model
+            result["updated"].append("model_name")
+            result["model_name"] = new_model
+        if new_temp is not None:
+            try:
+                gemini_provider._default_temperature = float(new_temp)
+                result["updated"].append("temperature")
+                result["temperature"] = float(new_temp)
+            except (ValueError, TypeError):
+                pass
+        result["active_provider"] = gemini_provider.get_provider_name()
+        result["llm_configured"] = gemini_provider.is_configured()
+        return jsonify(result)
+
+    return jsonify({
+        "model_name": gemini_provider.model_name,
+        "active_provider": gemini_provider.get_provider_name(),
+        "llm_configured": gemini_provider.is_configured(),
+        "api_key_configured": bool(gemini_provider.api_key),
+        "mode": gemini_provider._mode,
+        "available_models": [
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-flash-latest",
+        ]
+    })
+
+
+@app.route("/api/settings/followups", methods=["GET", "POST"])
+@require_auth()
+def api_settings_followups():
+    """Gets or updates follow-up automation runtime settings."""
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        updated = {}
+        if "enabled" in data:
+            Config.FOLLOWUP_ENABLED = bool(data["enabled"])
+            updated["FOLLOWUP_ENABLED"] = Config.FOLLOWUP_ENABLED
+        if "min_hours" in data:
+            try:
+                Config.FOLLOWUP_MIN_HOURS = float(data["min_hours"])
+                updated["FOLLOWUP_MIN_HOURS"] = Config.FOLLOWUP_MIN_HOURS
+            except (ValueError, TypeError):
+                pass
+        if "max_hours" in data:
+            try:
+                Config.FOLLOWUP_MAX_HOURS = float(data["max_hours"])
+                updated["FOLLOWUP_MAX_HOURS"] = Config.FOLLOWUP_MAX_HOURS
+            except (ValueError, TypeError):
+                pass
+        if "max_count" in data:
+            try:
+                Config.FOLLOWUP_MAX_COUNT = int(data["max_count"])
+                updated["FOLLOWUP_MAX_COUNT"] = Config.FOLLOWUP_MAX_COUNT
+            except (ValueError, TypeError):
+                pass
+        if "cooldown_hours" in data:
+            try:
+                Config.FOLLOWUP_COOLDOWN_HOURS = float(data["cooldown_hours"])
+                updated["FOLLOWUP_COOLDOWN_HOURS"] = Config.FOLLOWUP_COOLDOWN_HOURS
+            except (ValueError, TypeError):
+                pass
+        return jsonify({"success": True, "updated": updated})
+
+    return jsonify({
+        "enabled": Config.FOLLOWUP_ENABLED,
+        "min_hours": Config.FOLLOWUP_MIN_HOURS,
+        "max_hours": Config.FOLLOWUP_MAX_HOURS,
+        "max_count": Config.FOLLOWUP_MAX_COUNT,
+        "cooldown_hours": Config.FOLLOWUP_COOLDOWN_HOURS,
+        "delivery_window_start": Config.CAMPAIGN_DELIVERY_WINDOW_START,
+        "delivery_window_end": Config.CAMPAIGN_DELIVERY_WINDOW_END,
+    })
+
+
+@app.route("/api/settings/system-info", methods=["GET"])
+@require_auth()
+def api_settings_system_info():
+    """Returns read-only system configuration metadata for the settings panel."""
+    db_conn = get_db().is_connected()
+    from safety_guard import is_global_ai_autoreply_enabled, STRICT_REGISTERED_LEADS_ONLY
+    return jsonify({
+        "app_name": "ARIS AI Real Estate CRM",
+        "version": "2.0.0",
+        "agency_name": Config.AGENCY_NAME,
+        "webhook_url": f"https://your-domain.com/webhook",
+        "verify_token_configured": bool(Config.VERIFY_TOKEN),
+        "phone_number_id": Config.PHONE_NUMBER_ID,
+        "api_version": Config.API_VERSION,
+        "whatsapp_token_configured": bool(Config.ACCESS_TOKEN),
+        "database": {
+            "status": "connected" if db_conn else "disconnected",
+            "mode": "Primary MongoDB" if db_conn else "Degraded In-Memory Cache",
+            "name": Config.DATABASE_NAME,
+        },
+        "qdrant": {
+            "host": Config.QDRANT_HOST,
+            "port": Config.QDRANT_PORT,
+            "collection": Config.QDRANT_COLLECTION,
+            "embedding_model": Config.EMBEDDING_MODEL,
+        },
+        "safety": {
+            "strict_registered_leads_only": STRICT_REGISTERED_LEADS_ONLY,
+            "global_ai_autoreply_enabled": is_global_ai_autoreply_enabled(),
+        },
+        "campaign": {
+            "messages_per_second": Config.WHATSAPP_CAMPAIGN_MESSAGES_PER_SECOND,
+            "batch_size": Config.WHATSAPP_CAMPAIGN_BATCH_SIZE,
+            "max_retries": Config.WHATSAPP_MAX_RETRY_ATTEMPTS,
+            "delivery_window": f"{Config.CAMPAIGN_DELIVERY_WINDOW_START} – {Config.CAMPAIGN_DELIVERY_WINDOW_END}",
+        },
+        "conversation_retention_days": Config.CONVERSATION_RETENTION_DAYS,
+        "cab_service_enabled": Config.CAB_SERVICE_ENABLED,
+    })
+
+
 # =====================================================================
 # 7. WhatsApp Outbound & Campaign REST APIs
 # =====================================================================
@@ -2421,6 +2551,140 @@ def api_run_campaign(campaign_id):
     return api_start_campaign(campaign_id)
 
 
+# =====================================================================
+# 11. Knowledge Base, Vector Store & RAG Playground Endpoints
+# =====================================================================
+
+@app.route("/api/vector/health", methods=["GET"])
+def api_vector_health():
+    total_docs = DB.knowledge.count_documents()
+    total_chunks = DB.vectors.count_chunks()
+    engine_name = "Docker Qdrant" if getattr(DB.vectors, "mode", "") == "qdrant_docker" else "In-Memory Qdrant + MongoDB Atlas"
+    return jsonify({
+        "status": "healthy",
+        "total_documents": total_docs,
+        "total_chunks": total_chunks,
+        "embedding_model": getattr(Config, "EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
+        "engine": engine_name,
+        "mode": getattr(DB.vectors, "mode", "in_memory")
+    })
+
+
+@app.route("/api/knowledge/documents", methods=["GET"])
+@require_auth()
+def api_list_knowledge_documents():
+    docs = DB.knowledge.list_documents()
+    return jsonify({"documents": serialize_doc(docs)})
+
+
+@app.route("/api/knowledge/documents/<doc_id>", methods=["GET"])
+@require_auth()
+def api_get_knowledge_document(doc_id):
+    doc = DB.knowledge.get_by_id(doc_id)
+    if not doc:
+        return jsonify({"error": "Document not found"}), 404
+    return jsonify({"document": serialize_doc(doc)})
+
+
+@app.route("/api/knowledge/documents/<doc_id>/chunks", methods=["GET"])
+@require_auth()
+def api_list_document_chunks(doc_id):
+    chunks = DB.knowledge.list_chunks(doc_id)
+    return jsonify({"chunks": serialize_doc(chunks)})
+
+
+@app.route("/api/knowledge/upload", methods=["POST"])
+@require_auth()
+def api_upload_knowledge():
+    from ai_engine import RAGService
+    rag = RAGService()
+
+    title = request.form.get("title", "").strip()
+    property_id = request.form.get("property_id", "").strip() or None
+    document_type = request.form.get("document_type", "brochure").strip()
+    raw_text = request.form.get("content", "").strip()
+
+    filename = ""
+    extracted_text = raw_text
+
+    # Check for uploaded file
+    if "file" in request.files and request.files["file"].filename:
+        file_obj = request.files["file"]
+        filename = file_obj.filename
+        lower_fn = filename.lower()
+
+        try:
+            if lower_fn.endswith(".pdf"):
+                from pypdf import PdfReader
+                reader = PdfReader(file_obj.stream)
+                pages = [page.extract_text() or "" for page in reader.pages]
+                extracted_text = "\n\n".join(pages).strip()
+            elif lower_fn.endswith(".docx"):
+                import docx
+                doc = docx.Document(file_obj.stream)
+                extracted_text = "\n\n".join([p.text for p in doc.paragraphs if p.text.strip()]).strip()
+            else:
+                extracted_text = file_obj.read().decode("utf-8", errors="ignore").strip()
+        except Exception as ex:
+            return jsonify({"error": f"Failed reading file '{filename}': {str(ex)}"}), 400
+
+    if not title:
+        title = filename or "Knowledge Document"
+
+    if not extracted_text:
+        return jsonify({"error": "No text content found in upload. Please upload a valid document or provide text content."}), 400
+
+    result = rag.ingest_text_content(
+        title=title,
+        text=extracted_text,
+        property_id=property_id,
+        document_type=document_type,
+        filename=filename or f"{title}.txt"
+    )
+
+    if result.get("success"):
+        return jsonify({
+            "success": True,
+            "document": serialize_doc(result.get("document")),
+            "chunk_count": result.get("chunk_count", 0),
+            "message": f"Successfully ingested {result.get('chunk_count', 0)} semantic chunks into knowledge base."
+        })
+
+    return jsonify({"error": result.get("error", "Ingestion failed")}), 500
+
+
+@app.route("/api/knowledge/documents/<doc_id>/reindex", methods=["POST"])
+@require_auth()
+def api_reindex_document(doc_id):
+    from ai_engine import RAGService
+    doc = DB.knowledge.get_by_id(doc_id)
+    if not doc:
+        return jsonify({"error": "Document not found"}), 404
+
+    rag = RAGService()
+    content = doc.get("content", "")
+    if not content:
+        return jsonify({"error": "Document content is empty"}), 400
+
+    result = rag.ingest_text_content(
+        title=doc.get("title", "Document"),
+        text=content,
+        property_id=doc.get("property_id"),
+        document_type=doc.get("document_type", "brochure"),
+        filename=doc.get("filename", ""),
+        doc_id=doc_id
+    )
+    return jsonify({"success": True, "chunk_count": result.get("chunk_count", 0)})
+
+
+@app.route("/api/knowledge/documents/<doc_id>", methods=["DELETE"])
+@require_auth()
+def api_delete_knowledge_document(doc_id):
+    DB.knowledge.delete_document(doc_id)
+    DB.vectors.delete_chunks_by_document(doc_id)
+    return jsonify({"success": True, "message": "Document and chunks deleted."})
+
+
 @app.route("/api/knowledge/reindex", methods=["POST"])
 @require_auth()
 def api_reindex_knowledge():
@@ -2433,6 +2697,107 @@ def api_reindex_knowledge():
         "newly_ingested_chunks": count,
         "total_indexed_chunks": total_chunks,
         "vector_store_mode": getattr(DB.vectors, "mode", "in_memory")
+    })
+
+
+@app.route("/api/rag/test", methods=["POST"])
+@require_auth()
+def api_rag_test():
+    """
+    RAG Playground diagnostic console endpoint.
+    Performs vector semantic retrieval, tracks retrieval & LLM latencies,
+    and returns grounded Gemini response along with source chunks.
+    """
+    data = request.get_json(silent=True) or {}
+    query = data.get("query", "").strip()
+    if not query:
+        return jsonify({"error": "Query string is required"}), 400
+
+    property_id = data.get("property_id") or None
+    try:
+        top_k = int(data.get("top_k", 4))
+    except Exception:
+        top_k = 4
+
+    from ai_engine import RAGService
+    rag = RAGService()
+
+    t0 = time.time()
+    # 1. Semantic Retrieval
+    hits = rag.retrieve_hits(query=query, property_id=property_id, top_k=top_k)
+    t1 = time.time()
+
+    # 2. Scope property context
+    structured_property = None
+    if property_id:
+        structured_property = DB.properties.get_by_id(property_id)
+    elif not property_id:
+        for p in DB.properties.list_properties(limit=5):
+            if p.get("title", "").lower() in query.lower() or p.get("id", "").lower() in query.lower():
+                structured_property = p
+                break
+
+    prop_context = ""
+    if structured_property:
+        prop_context = (
+            f"FOCUSED PROPERTY: {structured_property.get('title')} ({structured_property.get('id')})\n"
+            f"- Location: {structured_property.get('locality')}, {structured_property.get('city')}\n"
+            f"- Configuration: {structured_property.get('bhk')} {structured_property.get('type')}\n"
+            f"- Price: {structured_property.get('price_display')}\n"
+            f"- Amenities: {', '.join(structured_property.get('amenities', []))}\n"
+            f"- Status: {structured_property.get('possession_status')}\n"
+        )
+
+    # 3. Grounded LLM Generation
+    context_chunks_text = "\n\n".join([
+        f"[Source #{i+1} ({h.get('title')} | Sim: {(h.get('similarity', 0)*100):.1f}%)]:\n{h.get('content')}"
+        for i, h in enumerate(hits)
+    ])
+
+    system_prompt = f"""You are ARIS, an expert real estate AI consultant.
+Answer the user's question accurately and helpfully based ONLY on the verified facts below.
+If the verified data doesn't mention something, state that confirmed details are not available.
+
+VERIFIED PROPERTY SPECIFICATIONS:
+{prop_context if prop_context else "Refer to retrieved fact excerpts below."}
+
+VERIFIED KNOWLEDGE BASE EXCERPTS:
+{context_chunks_text if context_chunks_text else "No knowledge base documents matched the query."}
+"""
+
+    answer = None
+    if gemini_provider.is_configured():
+        try:
+            answer = gemini_provider.generate(
+                system_prompt=system_prompt,
+                messages=[{"role": "user", "content": query}],
+                temperature=0.2
+            )
+        except Exception as ex:
+            logger.error(f"[RAG PLAYGROUND ERROR] Gemini error: {ex}")
+
+    if not answer:
+        if hits:
+            top_hit = hits[0].get("content", "")
+            answer = f"Based on verified project records:\n\n{top_hit}\n\n(Generated via local deterministic knowledge retrieval)."
+        else:
+            answer = "No matching knowledge base documents found for this query. You can upload brochures in the Knowledge Base to provide grounded answers."
+
+    t2 = time.time()
+
+    retrieval_ms = max(1, round((t1 - t0) * 1000))
+    llm_ms = max(1, round((t2 - t1) * 1000))
+    total_ms = round((t2 - t0) * 1000)
+
+    return jsonify({
+        "success": True,
+        "answer": answer,
+        "retrieved_chunks": hits,
+        "latency": {
+            "retrieval_ms": retrieval_ms,
+            "llm_ms": llm_ms,
+            "total_ms": total_ms
+        }
     })
 
 

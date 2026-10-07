@@ -4,12 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ARIS — AI Real Estate Sales Platform{% endblock %}</title>
-    <!-- Prevent theme flash on page load -->
     <script>
         (function() {
             try {
                 const saved = localStorage.getItem('aris_theme');
-                // Default to light theme for crisp white SaaS UI, or use saved preference
                 const activeTheme = saved ? saved : 'light';
                 if (activeTheme === 'dark') {
                     document.documentElement.classList.add('dark');
@@ -19,122 +17,113 @@
             } catch (e) {}
         })();
     </script>
-    <!-- Google Fonts Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
                     colors: {
-                        brand: {
-                            50: '#ecfdf5',
-                            100: '#d1fae5',
-                            500: '#10b981',
-                            600: '#059669',
-                            700: '#047857',
-                        }
+                        brand: { 50:'#ecfdf5', 100:'#d1fae5', 500:'#10b981', 600:'#059669', 700:'#047857' }
                     }
                 }
             }
         }
     </script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/app.css">
     {% block head %}{% endblock %}
 </head>
-<body class="h-full antialiased overflow-hidden flex bg-slate-100/70 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
+<body class="antialiased bg-slate-100/70 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
+
+    <!-- Mobile Backdrop -->
+    <div id="sidebar-backdrop"
+         onclick="closeSidebar()"
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-30 hidden lg:hidden"
+         aria-hidden="true"></div>
 
     <!-- SIDEBAR -->
-    <aside class="w-64 bg-white dark:bg-slate-900/95 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 select-none z-20 shadow-sm transition-colors duration-200">
-        <div>
-            <!-- Brand Logo -->
-            <div class="h-16 flex items-center px-6 border-b border-slate-200 dark:border-slate-800 gap-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white font-bold shadow-md shadow-emerald-500/20">
+    <aside id="sidebar"
+           class="fixed top-0 left-0 h-full w-72 lg:w-64 bg-white dark:bg-slate-900/95
+                  border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between
+                  select-none z-40 shadow-xl lg:shadow-sm
+                  -translate-x-full lg:translate-x-0
+                  transition-transform duration-300 ease-in-out">
+
+        <div class="overflow-y-auto flex-1">
+            <!-- Brand -->
+            <div class="h-16 flex items-center px-5 border-b border-slate-200 dark:border-slate-800 gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white font-bold shadow-md shadow-emerald-500/20 shrink-0">
                     <i data-lucide="building-2" class="w-5 h-5"></i>
                 </div>
-                <div>
+                <div class="flex-1 min-w-0">
                     <h1 class="font-extrabold tracking-tight text-slate-900 dark:text-white text-base leading-none">ARIS <span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">AI CRM</span></h1>
                     <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">Real Estate Assistant</p>
                 </div>
+                <button onclick="closeSidebar()" class="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition" aria-label="Close menu">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
             </div>
 
-            <!-- Navigation Links -->
-            <nav class="p-4 space-y-1 text-sm font-medium">
-                <a href="/dashboard" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'overview' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-                    <span>Overview</span>
+            <!-- Nav -->
+            <nav class="p-4 space-y-0.5 text-sm font-medium">
+                <a href="/dashboard" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'overview' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4 shrink-0"></i><span>Overview</span>
                 </a>
-                <a href="/dashboard/leads" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'leads' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="users" class="w-4 h-4"></i>
-                    <span>Leads Pipeline</span>
+                <a href="/dashboard/leads" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'leads' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="users" class="w-4 h-4 shrink-0"></i><span>Leads Pipeline</span>
                 </a>
-                <a href="/dashboard/conversations" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'conversations' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="message-square" class="w-4 h-4"></i>
-                    <span>Live WhatsApp Inbox</span>
+                <a href="/dashboard/conversations" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'conversations' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="message-square" class="w-4 h-4 shrink-0"></i><span>Live WhatsApp Inbox</span>
                 </a>
-                <a href="/dashboard/properties" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'properties' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="home" class="w-4 h-4"></i>
-                    <span>Properties Catalog</span>
+                <a href="/dashboard/properties" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'properties' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="home" class="w-4 h-4 shrink-0"></i><span>Properties Catalog</span>
                 </a>
-                <a href="/dashboard/visits" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'visits' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="calendar-clock" class="w-4 h-4"></i>
-                    <span>Site Visits</span>
+                <a href="/dashboard/visits" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'visits' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="calendar-clock" class="w-4 h-4 shrink-0"></i><span>Site Visits</span>
                 </a>
-                <a href="/dashboard/followups" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'followups' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="send" class="w-4 h-4"></i>
-                    <span>Nurture Sequences</span>
+                <a href="/dashboard/followups" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'followups' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="send" class="w-4 h-4 shrink-0"></i><span>Nurture Sequences</span>
                 </a>
-                <div class="pt-2 pb-1 px-3">
+
+                <div class="pt-3 pb-1 px-3">
                     <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Outbound WhatsApp</p>
                 </div>
-                <a href="/admin/whatsapp/test-send" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'wa_test_send' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="send-to-back" class="w-4 h-4"></i>
-                    <span>Test Send</span>
+                <a href="/admin/whatsapp/test-send" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'wa_test_send' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="send-to-back" class="w-4 h-4 shrink-0"></i><span>Test Send</span>
                 </a>
-                <a href="/admin/whatsapp/campaigns" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'wa_campaigns' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="megaphone" class="w-4 h-4"></i>
-                    <span>Broadcast Campaigns</span>
+                <a href="/admin/whatsapp/campaigns" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'wa_campaigns' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="megaphone" class="w-4 h-4 shrink-0"></i><span>Broadcast Campaigns</span>
                 </a>
-                <a href="/admin/whatsapp/messages" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'wa_messages' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="list-checks" class="w-4 h-4"></i>
-                    <span>Outbound Logs</span>
+                <a href="/admin/whatsapp/messages" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'wa_messages' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="list-checks" class="w-4 h-4 shrink-0"></i><span>Outbound Logs</span>
                 </a>
-                <div class="pt-2 pb-1 px-3">
-                    <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Intelligence & RAG</p>
+
+                <div class="pt-3 pb-1 px-3">
+                    <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Intelligence &amp; RAG</p>
                 </div>
-                <a href="/dashboard/knowledge" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'knowledge' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="book-open" class="w-4 h-4"></i>
-                    <span>Knowledge Base</span>
+                <a href="/dashboard/knowledge" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'knowledge' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="book-open" class="w-4 h-4 shrink-0"></i><span>Knowledge Base</span>
                 </a>
-                <a href="/dashboard/rag/playground" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'rag_playground' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="sparkles" class="w-4 h-4"></i>
-                    <span>RAG Playground</span>
+                <a href="/dashboard/rag/playground" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'rag_playground' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="sparkles" class="w-4 h-4 shrink-0"></i><span>RAG Playground</span>
                 </a>
-                <a href="/dashboard/analytics" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'analytics' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
-                    <span>Conversion Analytics</span>
+                <a href="/dashboard/analytics" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'analytics' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4 shrink-0"></i><span>Conversion Analytics</span>
                 </a>
-                <a href="/dashboard/settings" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'settings' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
-                    <i data-lucide="sliders" class="w-4 h-4"></i>
-                    <span>AI Engine & Settings</span>
+                <a href="/dashboard/settings" onclick="closeSidebar()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {% if active_page == 'settings' %}bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60{% endif %}">
+                    <i data-lucide="sliders" class="w-4 h-4 shrink-0"></i><span>AI Engine &amp; Settings</span>
                 </a>
             </nav>
         </div>
 
-        <!-- System Status Footer in Sidebar -->
-        <div class="p-4 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-950/40 text-xs text-slate-500 dark:text-slate-400 space-y-2">
+        <!-- Sidebar Footer -->
+        <div class="p-4 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-950/40 text-xs text-slate-500 dark:text-slate-400 space-y-2 shrink-0">
             <div class="flex items-center justify-between">
                 <span class="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -149,25 +138,28 @@
         </div>
     </aside>
 
-    <!-- MAIN WRAPPER -->
-    <div class="flex-1 flex flex-col h-full overflow-hidden">
+    <!-- MAIN (offset on desktop) -->
+    <div class="flex flex-col min-h-screen lg:pl-64">
+
         <!-- TOP HEADER -->
-        <header class="h-16 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between shrink-0 z-10 transition-colors duration-200">
-            <div class="flex items-center gap-4">
-                <h2 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight">{% block header_title %}Executive Dashboard{% endblock %}</h2>
-                <div class="hidden sm:flex items-center gap-2 text-xs bg-slate-100 dark:bg-slate-800/60 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 font-medium">
+        <header class="sticky top-0 h-14 lg:h-16 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 flex items-center justify-between shrink-0 z-20 transition-colors duration-200">
+            <div class="flex items-center gap-2 lg:gap-4 min-w-0">
+                <!-- Hamburger (mobile only) -->
+                <button onclick="openSidebar()" class="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700 shrink-0" aria-label="Open menu">
+                    <i data-lucide="menu" class="w-4 h-4"></i>
+                </button>
+                <h2 class="text-sm lg:text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate">{% block header_title %}Executive Dashboard{% endblock %}</h2>
+                <div class="hidden md:flex items-center gap-2 text-xs bg-slate-100 dark:bg-slate-800/60 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 font-medium shrink-0">
                     <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"></i>
-                    <span>Nagpur & Pune Catalog Active</span>
-                </div>
-                <div class="hidden md:flex items-center gap-1.5 text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 font-medium">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Realtime Sync</span>
+                    <span class="hidden lg:inline">Nagpur &amp; Pune Catalog Active</span>
+                    <span class="lg:hidden">Catalog Active</span>
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
-                <!-- Theme Toggle Button -->
-                <button id="theme-toggle-btn" onclick="toggleTheme()" type="button" title="Switch between Light & Dark theme" aria-label="Toggle theme" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700/80 shadow-sm flex items-center justify-center cursor-pointer">
+            <div class="flex items-center gap-1.5 lg:gap-3 shrink-0">
+                <!-- Theme Toggle -->
+                <button id="theme-toggle-btn" onclick="toggleTheme()" type="button" aria-label="Toggle theme"
+                        class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700/80 shadow-sm flex items-center justify-center cursor-pointer">
                     <i id="theme-toggle-sun" data-lucide="sun" class="w-4 h-4 text-amber-500 hidden dark:block"></i>
                     <i id="theme-toggle-moon" data-lucide="moon" class="w-4 h-4 text-slate-700 block dark:hidden"></i>
                 </button>
@@ -178,16 +170,14 @@
                     <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full"></span>
                 </a>
 
-                <!-- User Profile & Logout -->
-                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 dark:border-slate-800">
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 flex items-center justify-center font-bold text-xs text-white shadow-sm">
-                        AR
-                    </div>
+                <!-- User / Logout -->
+                <div class="flex items-center gap-1.5 lg:gap-2 pl-2 lg:pl-3 border-l border-slate-200 dark:border-slate-800">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 flex items-center justify-center font-bold text-xs text-white shadow-sm shrink-0">AR</div>
                     <div class="text-xs hidden sm:block">
                         <p class="font-semibold text-slate-900 dark:text-white leading-none">ARIS Admin</p>
                         <p class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">Sales Ops</p>
                     </div>
-                    <a href="/logout" title="Sign Out" class="ml-2 p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition">
+                    <a href="/logout" title="Sign Out" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                     </a>
                 </div>
@@ -195,30 +185,48 @@
         </header>
 
         <!-- PAGE CONTENT -->
-        <main class="flex-1 overflow-y-auto p-8 bg-slate-100/60 dark:bg-slate-950 transition-colors duration-200">
+        <main class="flex-1 p-4 md:p-6 lg:p-8 bg-slate-100/60 dark:bg-slate-950 transition-colors duration-200">
             {% block content %}{% endblock %}
         </main>
     </div>
 
-    <!-- Theme Switcher Script -->
     <script>
         function toggleTheme() {
             const isDark = document.documentElement.classList.toggle('dark');
             const newTheme = isDark ? 'dark' : 'light';
-            try {
-                localStorage.setItem('aris_theme', newTheme);
-            } catch (e) {}
-            
-            // Re-render Lucide icons
-            if (window.lucide) {
-                lucide.createIcons();
-            }
-
-            // Dispatch global event for charts and interactive components
+            try { localStorage.setItem('aris_theme', newTheme); } catch(e) {}
+            if (window.lucide) lucide.createIcons();
             window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: newTheme, isDark } }));
         }
 
-        // Initialize Lucide Icons
+        function openSidebar() {
+            document.getElementById('sidebar').classList.remove('-translate-x-full');
+            document.getElementById('sidebar-backdrop').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('sidebar-backdrop').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Swipe-to-close
+        (function() {
+            const sb = document.getElementById('sidebar');
+            let sx = 0;
+            sb.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+            sb.addEventListener('touchend', e => { if (sx - e.changedTouches[0].clientX > 60) closeSidebar(); }, { passive: true });
+        })();
+
+        // On desktop resize, reset sidebar state
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 1024) {
+                document.getElementById('sidebar-backdrop').classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+
         lucide.createIcons();
     </script>
     {% block scripts %}{% endblock %}

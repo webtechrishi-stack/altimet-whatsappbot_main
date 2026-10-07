@@ -4,9 +4,9 @@
 {% block header_title %}Live WhatsApp Inbox & Conversation Monitoring{% endblock %}
 
 {% block content %}
-<div class="h-[calc(100vh-8.5rem)] glass-panel rounded-2xl flex overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-    <!-- LEFT PANE: CONVERSATION LIST (360px) -->
-    <div class="w-88 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/70 dark:bg-slate-900/50 shrink-0">
+<div class="h-[calc(100vh-5.5rem)] md:h-[calc(100vh-7.5rem)] glass-panel rounded-2xl flex overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative">
+    <!-- LEFT PANE: CONVERSATION LIST (full width on mobile, 320-352px on desktop) -->
+    <div id="conv-list-pane" class="w-full md:w-80 lg:w-88 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/70 dark:bg-slate-900/50 shrink-0">
         <!-- Search bar & Temperature Filter -->
         <div class="p-3.5 border-b border-slate-200 dark:border-slate-800 space-y-2">
             <div class="relative">
@@ -14,11 +14,11 @@
                 <input type="text" id="conv-search" onkeyup="filterConversations(this.value)" placeholder="Search chats, text, BHK, area..." class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 shadow-sm">
             </div>
             <!-- Temperature Filters -->
-            <div class="flex items-center gap-1 text-[10px] font-bold">
-                <button onclick="setFilter('ALL')" id="filter-btn-ALL" class="filter-tab px-2 py-1 rounded-md bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">ALL</button>
-                <button onclick="setFilter('HOT')" id="filter-btn-HOT" class="filter-tab px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition">🔥 HOT</button>
-                <button onclick="setFilter('WARM')" id="filter-btn-WARM" class="filter-tab px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 transition">WARM</button>
-                <button onclick="setFilter('UNREAD')" id="filter-btn-UNREAD" class="filter-tab px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-cyan-500 dark:hover:text-cyan-400 transition">UNREAD</button>
+            <div class="flex items-center gap-1 text-[10px] font-bold overflow-x-auto no-scrollbar pb-0.5">
+                <button onclick="setFilter('ALL')" id="filter-btn-ALL" class="filter-tab px-2.5 py-1 rounded-md bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">ALL</button>
+                <button onclick="setFilter('HOT')" id="filter-btn-HOT" class="filter-tab px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition whitespace-nowrap">🔥 HOT</button>
+                <button onclick="setFilter('WARM')" id="filter-btn-WARM" class="filter-tab px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 transition whitespace-nowrap">WARM</button>
+                <button onclick="setFilter('UNREAD')" id="filter-btn-UNREAD" class="filter-tab px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-cyan-500 dark:hover:text-cyan-400 transition whitespace-nowrap">UNREAD</button>
             </div>
         </div>
 
@@ -28,20 +28,24 @@
         </div>
     </div>
 
-    <!-- RIGHT PANE: ACTIVE CHAT THREAD -->
-    <div class="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-950/60">
+    <!-- RIGHT PANE: ACTIVE CHAT THREAD (hidden on mobile until chat is selected) -->
+    <div id="conv-thread-pane" class="hidden md:flex flex-1 flex-col bg-slate-100/50 dark:bg-slate-950/60 min-w-0">
         <!-- Thread Header -->
-        <div id="chat-header" class="h-16 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between bg-white/90 dark:bg-slate-900/40">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-sm">
+        <div id="chat-header" class="h-16 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 flex items-center justify-between bg-white/90 dark:bg-slate-900/40 gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <!-- Mobile Back Button -->
+                <button onclick="showConvListMobile()" type="button" class="md:hidden p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0" aria-label="Back to chat list">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                </button>
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-sm shrink-0">
                     💬
                 </div>
-                <div>
+                <div class="min-w-0">
                     <div class="flex items-center gap-2">
-                        <h3 id="chat-customer-name" class="font-bold text-sm text-slate-900 dark:text-white leading-none">Select a Conversation</h3>
-                        <span id="chat-temp-badge" class="hidden px-2 py-0.2 rounded text-[10px] font-bold"></span>
+                        <h3 id="chat-customer-name" class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-none truncate">Select a Conversation</h3>
+                        <span id="chat-temp-badge" class="hidden px-2 py-0.2 rounded text-[10px] font-bold shrink-0"></span>
                     </div>
-                    <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400 truncate">
                         <span id="chat-phone" class="font-mono">No contact active</span>
                         <span id="chat-lead-link" class="hidden">• <a href="#" id="view-lead-btn" class="text-emerald-600 dark:text-emerald-400 hover:underline">View Lead 360 & Memory →</a></span>
                     </div>
@@ -98,16 +102,18 @@
             conversationsData = data.conversations || [];
             applyFilter();
 
-            // Verify active conversation still exists or select first available
+            // Verify active conversation still exists or select first available (on desktop)
             const currentExists = conversationsData.some(c => c.conversation_id === activeConversationId);
             if (!currentExists && conversationsData.length > 0) {
-                selectConversation(
-                    conversationsData[0].conversation_id,
-                    conversationsData[0].wa_id,
-                    conversationsData[0].customer_name,
-                    conversationsData[0].lead_id,
-                    conversationsData[0].lead_temperature
-                );
+                if (window.innerWidth >= 768) {
+                    selectConversation(
+                        conversationsData[0].conversation_id,
+                        conversationsData[0].wa_id,
+                        conversationsData[0].customer_name,
+                        conversationsData[0].lead_id,
+                        conversationsData[0].lead_temperature
+                    );
+                }
             } else if (!currentExists) {
                 activeConversationId = null;
                 activeWaId = null;
@@ -199,10 +205,31 @@
         }).join('');
     }
 
+    function showConvListMobile() {
+        const listPane = document.getElementById('conv-list-pane');
+        const threadPane = document.getElementById('conv-thread-pane');
+        if (listPane) listPane.classList.remove('hidden');
+        if (threadPane) {
+            threadPane.classList.add('hidden');
+            threadPane.classList.remove('flex');
+        }
+    }
+
     async function selectConversation(convId, waId, name, leadId, temp) {
         activeConversationId = convId;
         activeWaId = waId;
         activeLeadId = leadId;
+
+        // Mobile responsiveness: switch view to thread pane
+        if (window.innerWidth < 768) {
+            const listPane = document.getElementById('conv-list-pane');
+            const threadPane = document.getElementById('conv-thread-pane');
+            if (listPane) listPane.classList.add('hidden');
+            if (threadPane) {
+                threadPane.classList.remove('hidden');
+                threadPane.classList.add('flex');
+            }
+        }
 
         const currentConv = conversationsData.find(c => c.conversation_id === convId);
         document.getElementById('chat-customer-name').innerText = name || 'Customer';
@@ -358,6 +385,18 @@
             console.error('Failed to toggle AI for conversation:', e);
         }
     }
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 768) {
+            const listPane = document.getElementById('conv-list-pane');
+            const threadPane = document.getElementById('conv-thread-pane');
+            if (listPane) listPane.classList.remove('hidden');
+            if (threadPane) {
+                threadPane.classList.remove('hidden');
+                threadPane.classList.add('flex');
+            }
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         loadConversations();

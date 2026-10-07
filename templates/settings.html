@@ -1,177 +1,589 @@
 {% extends "base.html" %}
 
 {% block title %}ARIS — AI Engine & Settings{% endblock %}
-{% block header_title %}AI Engine & System Health{% endblock %}
+{% block header_title %}AI Engine & Settings{% endblock %}
+
+{% block head %}
+<style>
+  .settings-tab-btn{display:flex;align-items:center;gap:8px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s ease;border:1px solid transparent;white-space:nowrap;}
+  .settings-tab-btn.active{background:rgba(16,185,129,0.12);color:#059669;border-color:rgba(16,185,129,0.3);}
+  html.dark .settings-tab-btn.active{background:rgba(16,185,129,0.15);color:#10b981;border-color:rgba(16,185,129,0.35);}
+  .settings-tab-btn:not(.active){color:#64748b;}
+  .settings-tab-btn:not(.active):hover{background:#f1f5f9;color:#334155;}
+  html.dark .settings-tab-btn:not(.active){color:#94a3b8;}
+  html.dark .settings-tab-btn:not(.active):hover{background:rgba(51,65,85,0.5);color:#cbd5e1;}
+  .settings-panel{display:none;}
+  .settings-panel.active{display:block;}
+  .stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;transition:box-shadow 0.2s;}
+  html.dark .stat-card{background:rgba(30,41,59,0.7);border-color:rgba(51,65,85,0.6);}
+  .stat-card:hover{box-shadow:0 4px 18px -4px rgba(0,0,0,0.1);}
+  .toggle-track{width:44px;height:24px;background:#e2e8f0;border-radius:9999px;position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;}
+  .toggle-track.on{background:#10b981;}
+  .toggle-knob{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:transform 0.2s;}
+  .toggle-track.on .toggle-knob{transform:translateX(20px);}
+  .s-input{width:100%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 14px;font-size:13px;color:#0f172a;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+  .s-input:focus{border-color:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,0.12);}
+  html.dark .s-input{background:rgba(15,23,42,0.7);border-color:rgba(51,65,85,0.6);color:#f1f5f9;}
+  .s-select{width:100%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 36px 9px 14px;font-size:13px;color:#0f172a;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;transition:border-color 0.15s;}
+  .s-select:focus{border-color:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,0.12);}
+  html.dark .s-select{background-color:rgba(15,23,42,0.7);border-color:rgba(51,65,85,0.6);color:#f1f5f9;}
+  .btn-save{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:linear-gradient(135deg,#059669,#10b981);color:#fff;cursor:pointer;border:none;transition:opacity 0.15s,transform 0.12s;box-shadow:0 2px 8px rgba(16,185,129,0.3);}
+  .btn-save:hover{opacity:0.9;transform:translateY(-1px);}
+  .btn-save:active{transform:translateY(0);}
+  .section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;margin-bottom:12px;}
+  .pill-ok{background:rgba(16,185,129,0.12);color:#059669;border:1px solid rgba(16,185,129,0.3);}
+  .pill-warn{background:rgba(245,158,11,0.12);color:#b45309;border:1px solid rgba(245,158,11,0.3);}
+  .pill-err{background:rgba(239,68,68,0.12);color:#b91c1c;border:1px solid rgba(239,68,68,0.3);}
+  html.dark .pill-ok{color:#10b981;}html.dark .pill-warn{color:#fbbf24;}html.dark .pill-err{color:#f87171;}
+  .dot-pulse{animation:dotpulse 2s infinite;}
+  @keyframes dotpulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .info-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #f1f5f9;gap:12px;font-size:13px;}
+  html.dark .info-row{border-bottom-color:rgba(51,65,85,0.35);}
+  .info-row:last-child{border-bottom:none;}
+  .info-key{color:#64748b;font-weight:500;}
+  .info-val{color:#0f172a;font-weight:600;text-align:right;}
+  html.dark .info-key{color:#94a3b8;}html.dark .info-val{color:#f1f5f9;}
+  .s-slider{-webkit-appearance:none;width:100%;height:6px;border-radius:9999px;background:#e2e8f0;outline:none;cursor:pointer;}
+  html.dark .s-slider{background:rgba(51,65,85,0.6);}
+  .s-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#10b981;cursor:pointer;box-shadow:0 0 0 3px rgba(16,185,129,0.2);transition:box-shadow 0.15s;}
+  .s-slider::-webkit-slider-thumb:hover{box-shadow:0 0 0 6px rgba(16,185,129,0.2);}
+  .s-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:22px 24px;transition:box-shadow 0.2s;}
+  html.dark .s-card{background:rgba(30,41,59,0.65);border-color:rgba(51,65,85,0.6);}
+  #settings-toast{position:fixed;bottom:28px;right:28px;background:#0f172a;color:#f1f5f9;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.25);transform:translateY(80px);opacity:0;transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1),opacity 0.2s;z-index:9999;pointer-events:none;}
+  @media (max-width: 640px) {
+    #settings-toast{bottom:16px;right:16px;left:16px;justify-content:center;font-size:12px;padding:10px 16px;}
+  }
+  #settings-toast.show{transform:translateY(0);opacity:1;}
+  #settings-toast.ok{background:#059669;}
+  #settings-toast.err{background:#dc2626;}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="space-y-6 max-w-5xl mx-auto">
-    <!-- SYSTEM DIAGNOSTICS -->
-    <div class="glass-panel p-6 rounded-2xl space-y-4">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-            <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
-            Live System Health Diagnostics
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <!-- Database -->
-            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-1">
-                <span class="text-slate-500 block">Database Layer</span>
-                <div class="flex items-center gap-2">
-                    <span id="db-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                    <span id="db-status-text" class="font-bold text-white text-sm">Checking...</span>
-                </div>
-                <p id="db-mode-text" class="text-[11px] text-slate-400 pt-1">Primary MongoDB / In-Memory Cache</p>
-            </div>
+<div class="max-w-5xl mx-auto space-y-6">
 
-            <!-- Meta WhatsApp Cloud API -->
-            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-1">
-                <span class="text-slate-500 block">Meta WhatsApp Cloud API</span>
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="font-bold text-white text-sm">Active & Connected</span>
-                </div>
-                <p class="text-[11px] text-slate-400 pt-1 font-mono">ID: 1211757728692988 (v25.0)</p>
-            </div>
-
-            <!-- AI Engine Provider -->
-            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-1">
-                <span class="text-slate-500 block">AI Sales Reasoning</span>
-                <div class="flex items-center gap-2">
-                    <span id="ai-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                    <span id="ai-provider-text" class="font-bold text-white text-sm">Checking...</span>
-                </div>
-                <p class="text-[11px] text-slate-400 pt-1">Automatic Intent & Slot Filling</p>
-            </div>
-        </div>
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">AI Engine &amp; Settings</h2>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Configure ARIS intelligence, safety policies, and automation rules</p>
     </div>
+    <span id="global-status-badge" class="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full pill-ok w-fit">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dot-pulse"></span> AI Active
+    </span>
+  </div>
 
-    <!-- GLOBAL AI AUTO-REPLY & OUTBOUND SAFETY -->
-    <div class="glass-panel p-6 rounded-2xl space-y-5 border border-slate-800">
+  <!-- TAB BAR -->
+  <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+    <button class="settings-tab-btn active" onclick="switchTab('health')" id="tab-health"><i data-lucide="activity" class="w-3.5 h-3.5"></i> System Health</button>
+    <button class="settings-tab-btn" onclick="switchTab('ai')" id="tab-ai"><i data-lucide="bot" class="w-3.5 h-3.5"></i> AI Engine</button>
+    <button class="settings-tab-btn" onclick="switchTab('safety')" id="tab-safety"><i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Auto-Reply &amp; Safety</button>
+    <button class="settings-tab-btn" onclick="switchTab('followups')" id="tab-followups"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Follow-Up Automation</button>
+    <button class="settings-tab-btn" onclick="switchTab('sysinfo')" id="tab-sysinfo"><i data-lucide="server" class="w-3.5 h-3.5"></i> System Info</button>
+  </div>
+
+  <!-- ===== TAB 1: SYSTEM HEALTH ===== -->
+  <div class="settings-panel active" id="panel-health">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+      <div class="stat-card space-y-2 hover-lift">
         <div class="flex items-center justify-between">
-            <div>
-                <h3 class="text-base font-bold text-white flex items-center gap-2">
-                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
-                    AI Auto-Reply Master Control & Outbound Safety
-                </h3>
-                <p class="text-xs text-slate-400 pt-1">Control automated WhatsApp AI replies and prevent unwanted outbound Meta API calls.</p>
-            </div>
-            <!-- Global Switch -->
-            <label class="flex items-center gap-3 cursor-pointer select-none">
-                <span id="global-ai-status-label" class="text-xs font-bold text-emerald-400">Global AI Enabled</span>
-                <input type="checkbox" id="global-ai-toggle" onchange="toggleGlobalAi(this.checked)" class="sr-only peer">
-                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-            </label>
+          <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide"><i data-lucide="database" class="w-3.5 h-3.5"></i> Database</div>
+          <span id="db-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full pill-ok">—</span>
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div class="p-4 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="font-bold text-white">Strict Registered Leads Policy</span>
-                    <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">ENFORCED</span>
-                </div>
-                <p class="text-[11px] text-slate-400 leading-relaxed">
-                    Outbound messages are <strong>strictly blocked</strong> for default dummy/test numbers. Meta API calls will only be dispatched to contacts explicitly added via <strong>Manual Lead Creation</strong> or <strong>Excel Campaign Import</strong>.
-                </p>
-            </div>
-
-            <div class="p-4 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="font-bold text-white">Owner / Admin Phone</span>
-                    <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold">WHITELISTED</span>
-                </div>
-                <p class="text-[11px] text-slate-400 leading-relaxed font-mono">
-                    +91 8600079496 (Authorized for direct testing & notification alerts)
-                </p>
-            </div>
+        <div class="flex items-center gap-2">
+          <span id="db-dot" class="w-2.5 h-2.5 rounded-full bg-slate-300 dot-pulse"></span>
+          <span id="db-status" class="font-bold text-slate-800 dark:text-white text-sm">Checking...</span>
         </div>
+        <p id="db-mode" class="text-[11px] text-slate-400">MongoDB / In-Memory Cache</p>
+      </div>
+      <div class="stat-card space-y-2 hover-lift">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp API</div>
+          <span id="wa-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full pill-ok">—</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="wa-dot" class="w-2.5 h-2.5 rounded-full bg-slate-300 dot-pulse"></span>
+          <span id="wa-status" class="font-bold text-slate-800 dark:text-white text-sm">Checking...</span>
+        </div>
+        <p id="wa-info" class="text-[11px] text-slate-400 font-mono">Meta Cloud API</p>
+      </div>
+      <div class="stat-card space-y-2 hover-lift">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide"><i data-lucide="cpu" class="w-3.5 h-3.5"></i> AI Engine</div>
+          <span id="ai-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full pill-ok">—</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="ai-dot" class="w-2.5 h-2.5 rounded-full bg-slate-300 dot-pulse"></span>
+          <span id="ai-status" class="font-bold text-slate-800 dark:text-white text-sm">Checking...</span>
+        </div>
+        <p id="ai-provider-label" class="text-[11px] text-slate-400">Gemini / Fallback</p>
+      </div>
     </div>
-
-    <!-- AI PROMPT & REASONING SETTINGS -->
-    <div class="glass-panel p-6 rounded-2xl space-y-4">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-            <i data-lucide="bot" class="w-4 h-4 text-purple-400"></i>
-            ARIS Conversational Persona & Guardrails
-        </h3>
-        <div class="space-y-3 text-xs">
-            <div>
-                <label class="block text-slate-400 mb-1">Agent Role & Persona</label>
-                <input type="text" readonly value="ARIS (AI Real Estate Sales Assistant) — Consultative Property Specialist" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-300">
-            </div>
-            <div>
-                <label class="block text-slate-400 mb-1">Active Target Markets</label>
-                <div class="flex gap-2">
-                    <span class="px-3 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700">Nagpur (Manish Nagar, Besa, Wardha Rd, Dharampeth)</span>
-                    <span class="px-3 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700">Pune (Hinjewadi, Wakad)</span>
-                </div>
-            </div>
-            <div>
-                <label class="block text-slate-400 mb-1">Anti-Hallucination Guardrails</label>
-                <div class="p-3 bg-slate-900/60 border border-slate-800 rounded-xl text-slate-400 leading-relaxed text-[11px]">
-                    🛡️ <strong>Strict Inventory Anchoring:</strong> The AI Agent will only recommend listings that are confirmed in the active properties catalog. Fake property names, unrealistic pricing, and non-existent addresses are explicitly prohibited.
-                </div>
-            </div>
-        </div>
+    <div class="s-card space-y-1">
+      <div class="section-label">Live Diagnostics</div>
+      <div class="info-row"><span class="info-key">Last checked</span><span class="info-val" id="hd-timestamp">—</span></div>
+      <div class="info-row"><span class="info-key">System status</span><span class="info-val" id="hd-status">—</span></div>
+      <div class="info-row"><span class="info-key">MongoDB target</span><span class="info-val" id="hd-mongo-target">—</span></div>
+      <div class="info-row"><span class="info-key">WhatsApp Phone ID</span><span class="info-val" id="hd-phone-id">—</span></div>
+      <div class="info-row"><span class="info-key">API Version</span><span class="info-val" id="hd-api-ver">—</span></div>
+      <div class="info-row"><span class="info-key">Access Token</span><span class="info-val" id="hd-token">—</span></div>
+      <div class="info-row"><span class="info-key">Active AI Provider</span><span class="info-val" id="hd-ai-provider">—</span></div>
+      <div class="flex items-center justify-between pt-4">
+        <p class="text-xs text-slate-400">Auto-refreshes every 30 seconds</p>
+        <button onclick="loadHealth()" class="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-colors"><i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh now</button>
+      </div>
     </div>
+  </div>
+
+  <!-- ===== TAB 2: AI ENGINE ===== -->
+  <div class="settings-panel" id="panel-ai">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="s-card space-y-4">
+        <div>
+          <div class="section-label">LLM Model Configuration</div>
+          <h4 class="font-bold text-slate-800 dark:text-white text-sm">Google Gemini Provider</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Select the active AI model powering ARIS responses</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Active Model</label>
+          <select id="ai-model-select" class="s-select">
+            <option value="gemini-3.6-flash">gemini-3.6-flash (Recommended)</option>
+            <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+            <option value="gemini-1.5-pro">gemini-1.5-pro (Higher quality)</option>
+            <option value="gemini-flash-latest">gemini-flash-latest</option>
+          </select>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-semibold text-slate-600 dark:text-slate-400">Temperature</label>
+            <span id="temp-display" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">0.30</span>
+          </div>
+          <input type="range" id="ai-temp-slider" class="s-slider" min="0" max="1" step="0.05" value="0.30"
+            oninput="document.getElementById('temp-display').textContent=parseFloat(this.value).toFixed(2)">
+          <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+            <span>Precise (0)</span><span>Balanced (0.5)</span><span>Creative (1)</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+          <div>
+            <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">API Key Status</p>
+            <p id="api-key-status-text" class="text-[11px] text-slate-400 mt-0.5">Checking...</p>
+          </div>
+          <span id="api-key-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full pill-ok">—</span>
+        </div>
+        <button onclick="saveAiModel()" class="btn-save w-full justify-center"><i data-lucide="save" class="w-3.5 h-3.5"></i> Save Model Settings</button>
+      </div>
+
+      <div class="s-card space-y-4">
+        <div>
+          <div class="section-label">Conversational Persona</div>
+          <h4 class="font-bold text-slate-800 dark:text-white text-sm">ARIS Agent Identity</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Agent persona and anti-hallucination guardrails</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Agent Role</label>
+          <input type="text" readonly value="ARIS — AI Real Estate Sales Specialist" class="s-input cursor-default opacity-80">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Active Target Markets</label>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-medium">Nagpur</span>
+            <span class="text-[11px] px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-medium">Pune</span>
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400">Active Guardrails</label>
+          <div class="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0"></i>
+            <p class="text-[11px] text-emerald-700 dark:text-emerald-300"><strong>Inventory Anchoring:</strong> Only recommends catalog properties</p>
+          </div>
+          <div class="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0"></i>
+            <p class="text-[11px] text-emerald-700 dark:text-emerald-300"><strong>Prompt Injection Defense:</strong> Ignores system commands in user input</p>
+          </div>
+          <div class="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0"></i>
+            <p class="text-[11px] text-emerald-700 dark:text-emerald-300"><strong>Fallback Engine:</strong> Rule-based responses when LLM is unavailable</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="s-card md:col-span-2 space-y-4">
+        <div>
+          <div class="section-label">RAG Knowledge Pipeline</div>
+          <h4 class="font-bold text-slate-800 dark:text-white text-sm">Retrieval Augmented Generation</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">ARIS augments LLM responses with property catalog and knowledge docs via semantic search.</p>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Property Catalog</p>
+            <p class="text-sm font-bold text-slate-800 dark:text-white mt-1" id="rag-prop-count">—</p>
+            <p class="text-[10px] text-slate-400">Active listings</p>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Knowledge Docs</p>
+            <p class="text-sm font-bold text-slate-800 dark:text-white mt-1" id="rag-doc-count">—</p>
+            <p class="text-[10px] text-slate-400">Uploaded files</p>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Vector Store</p>
+            <p class="text-sm font-bold text-slate-800 dark:text-white mt-1" id="rag-vector-status">—</p>
+            <p class="text-[10px] text-slate-400">Qdrant status</p>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Embedding Model</p>
+            <p class="text-sm font-bold text-slate-800 dark:text-white mt-1" id="rag-embed-model">—</p>
+            <p class="text-[10px] text-slate-400">SentenceTransformer</p>
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <a href="/dashboard/knowledge" class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"><i data-lucide="book-open" class="w-3.5 h-3.5"></i> Manage Knowledge Base</a>
+          <a href="/dashboard/rag/playground" class="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i> RAG Playground</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB 3: SAFETY ===== -->
+  <div class="settings-panel" id="panel-safety">
+    <div class="space-y-4">
+      <div class="s-card">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="section-label">Master Control</div>
+            <h4 class="font-bold text-slate-800 dark:text-white text-sm">Global AI Auto-Reply</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">When disabled, ARIS stops all automated WhatsApp replies. Manual takeover mode.</p>
+          </div>
+          <div class="flex flex-col items-end gap-1.5">
+            <div class="toggle-track" id="global-ai-track" onclick="toggleGlobalAi()"><div class="toggle-knob"></div></div>
+            <span id="global-ai-label" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Enabled</span>
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="s-card space-y-3">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="section-label">Outbound Safety</div>
+              <h4 class="font-bold text-slate-800 dark:text-white text-sm">Strict Registered Leads Policy</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">Outbound API calls are <strong class="text-slate-700 dark:text-slate-300">strictly blocked</strong> for dummy/test numbers. Messages dispatched only to contacts added via <strong class="text-slate-700 dark:text-slate-300">Manual Creation</strong> or <strong class="text-slate-700 dark:text-slate-300">Campaign Import</strong>.</p>
+            </div>
+            <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full pill-ok">ENFORCED</span>
+          </div>
+          <div class="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-500 shrink-0"></i>
+            <p class="text-[11px] text-amber-700 dark:text-amber-300">Hardcoded server-side policy. Cannot be disabled from the UI.</p>
+          </div>
+        </div>
+        <div class="s-card space-y-3">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="section-label">Owner Bypass</div>
+              <h4 class="font-bold text-slate-800 dark:text-white text-sm">Admin Phone Whitelist</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">Owner phone permanently whitelisted for testing, notifications, and admin alerts — bypasses strict lead checks.</p>
+            </div>
+            <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:rgba(59,130,246,0.12);color:#1d4ed8;border:1px solid rgba(59,130,246,0.3)">WHITELISTED</span>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+            <p class="text-xs font-bold text-slate-700 dark:text-slate-200 font-mono">+91 8600079496</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Authorized for testing &amp; alert notifications</p>
+          </div>
+        </div>
+      </div>
+      <div class="s-card space-y-3">
+        <div>
+          <div class="section-label">Human Handoff</div>
+          <h4 class="font-bold text-slate-800 dark:text-white text-sm">AI vs Human Takeover Mechanics</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">How per-lead AI takeover is managed</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Enable Takeover</p>
+            <p class="text-xs text-slate-700 dark:text-slate-300">Lead detail &rarr; "Take Over" button suppresses AI for that lead.</p>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Resume AI</p>
+            <p class="text-xs text-slate-700 dark:text-slate-300">Click "Resume AI" on lead detail to re-enable automated responses.</p>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Keyword Override</p>
+            <p class="text-xs text-slate-700 dark:text-slate-300">User sends "bot on" / "bot off" to toggle AI for their own number.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB 4: FOLLOW-UP AUTOMATION ===== -->
+  <div class="settings-panel" id="panel-followups">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="s-card space-y-4">
+        <div>
+          <div class="section-label">Automation Control</div>
+          <h4 class="font-bold text-slate-800 dark:text-white text-sm">Follow-Up Engine</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Automatically sends drip follow-up messages to leads who have not responded</p>
+        </div>
+        <div class="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+          <div>
+            <p class="text-sm font-bold text-slate-800 dark:text-white">Follow-Up Automation</p>
+            <p id="followup-status-text" class="text-[11px] text-slate-400 mt-0.5">Loading...</p>
+          </div>
+          <div class="toggle-track" id="followup-track" onclick="toggleFollowup()"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <label class="text-xs font-semibold text-slate-600 dark:text-slate-400">Min delay before first nudge</label>
+              <span id="min-hours-display" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">6h</span>
+            </div>
+            <input type="range" id="min-hours-slider" class="s-slider" min="1" max="24" step="0.5" value="6"
+              oninput="document.getElementById('min-hours-display').textContent=this.value+'h'">
+          </div>
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <label class="text-xs font-semibold text-slate-600 dark:text-slate-400">Max delay before nudge</label>
+              <span id="max-hours-display" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">12h</span>
+            </div>
+            <input type="range" id="max-hours-slider" class="s-slider" min="2" max="48" step="0.5" value="12"
+              oninput="document.getElementById('max-hours-display').textContent=this.value+'h'">
+          </div>
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <label class="text-xs font-semibold text-slate-600 dark:text-slate-400">Max nudges per lead</label>
+              <span id="max-count-display" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">2</span>
+            </div>
+            <input type="range" id="max-count-slider" class="s-slider" min="1" max="5" step="1" value="2"
+              oninput="document.getElementById('max-count-display').textContent=this.value">
+          </div>
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <label class="text-xs font-semibold text-slate-600 dark:text-slate-400">Cooldown before re-nudge</label>
+              <span id="cooldown-display" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">24h</span>
+            </div>
+            <input type="range" id="cooldown-slider" class="s-slider" min="6" max="72" step="1" value="24"
+              oninput="document.getElementById('cooldown-display').textContent=this.value+'h'">
+          </div>
+        </div>
+        <button onclick="saveFollowups()" class="btn-save w-full justify-center"><i data-lucide="save" class="w-3.5 h-3.5"></i> Save Automation Settings</button>
+      </div>
+
+      <div class="s-card space-y-4">
+        <div>
+          <div class="section-label">Campaign Throttle</div>
+          <h4 class="font-bold text-slate-800 dark:text-white text-sm">Delivery Window &amp; Rate Limits</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Campaign delivery restricted to safe hours for maximum engagement</p>
+        </div>
+        <div class="info-row"><span class="info-key">Delivery window start</span><span class="info-val" id="dw-start">—</span></div>
+        <div class="info-row"><span class="info-key">Delivery window end</span><span class="info-val" id="dw-end">—</span></div>
+        <div class="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50">
+          <i data-lucide="info" class="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5"></i>
+          <p class="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">Scheduler checks every 30s. Each lead gets a nudge only if they have not replied in <strong>min_hours</strong>, have not exceeded <strong>max_count</strong> nudges, and are outside the <strong>cooldown</strong> period.</p>
+        </div>
+        <div class="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+          <i data-lucide="moon" class="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5"></i>
+          <p class="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed"><strong>Quiet hours enforced.</strong> Messages queued during 9 PM to 9 AM are held until the next delivery window opens.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB 5: SYSTEM INFO ===== -->
+  <div class="settings-panel" id="panel-sysinfo">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="s-card">
+        <div class="section-label">Application</div>
+        <div class="info-row"><span class="info-key">App Name</span><span class="info-val" id="si-app-name">—</span></div>
+        <div class="info-row"><span class="info-key">Version</span><span class="info-val" id="si-version">—</span></div>
+        <div class="info-row"><span class="info-key">Agency Name</span><span class="info-val" id="si-agency">—</span></div>
+        <div class="info-row"><span class="info-key">Conversation Retention</span><span class="info-val" id="si-retention">—</span></div>
+        <div class="info-row"><span class="info-key">Cab Service</span><span class="info-val" id="si-cab">—</span></div>
+      </div>
+      <div class="s-card">
+        <div class="section-label">WhatsApp Cloud API</div>
+        <div class="info-row"><span class="info-key">Phone Number ID</span><span class="info-val" id="si-phone-id">—</span></div>
+        <div class="info-row"><span class="info-key">API Version</span><span class="info-val" id="si-api-ver">—</span></div>
+        <div class="info-row"><span class="info-key">Access Token</span><span class="info-val" id="si-token">—</span></div>
+        <div class="info-row"><span class="info-key">Verify Token</span><span class="info-val" id="si-verify">—</span></div>
+        <div class="info-row"><span class="info-key">Webhook URL</span><span class="info-val text-[11px] text-slate-500">POST /webhook</span></div>
+      </div>
+      <div class="s-card">
+        <div class="section-label">Database</div>
+        <div class="info-row"><span class="info-key">Status</span><span class="info-val" id="si-db-status">—</span></div>
+        <div class="info-row"><span class="info-key">Mode</span><span class="info-val" id="si-db-mode">—</span></div>
+        <div class="info-row"><span class="info-key">Database Name</span><span class="info-val" id="si-db-name">—</span></div>
+      </div>
+      <div class="s-card">
+        <div class="section-label">Vector Store (Qdrant)</div>
+        <div class="info-row"><span class="info-key">Host</span><span class="info-val" id="si-qdrant-host">—</span></div>
+        <div class="info-row"><span class="info-key">Port</span><span class="info-val" id="si-qdrant-port">—</span></div>
+        <div class="info-row"><span class="info-key">Collection</span><span class="info-val" id="si-qdrant-col">—</span></div>
+        <div class="info-row"><span class="info-key">Embedding Model</span><span class="info-val" id="si-embed">—</span></div>
+      </div>
+      <div class="s-card md:col-span-2">
+        <div class="section-label">Campaign Engine</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4">
+          <div class="info-row"><span class="info-key">Messages/sec</span><span class="info-val" id="si-mps">—</span></div>
+          <div class="info-row"><span class="info-key">Batch size</span><span class="info-val" id="si-batch">—</span></div>
+          <div class="info-row"><span class="info-key">Max retries</span><span class="info-val" id="si-retries">—</span></div>
+          <div class="info-row"><span class="info-key">Delivery window</span><span class="info-val" id="si-dw">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
+<div id="settings-toast"><i data-lucide="check-circle" class="w-4 h-4"></i><span id="toast-msg">Saved!</span></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    async function loadHealth() {
-        try {
-            const res = await fetch('/api/system/health');
-            const data = await res.json();
+let _followupEnabled=true,_globalAiEnabled=true;
+function switchTab(n){
+  document.querySelectorAll('.settings-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.settings-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+n).classList.add('active');
+  document.getElementById('tab-'+n).classList.add('active');
+  if(window.lucide)lucide.createIcons();
+}
+let _tt;
+function showToast(msg,type='ok'){
+  clearTimeout(_tt);
+  const t=document.getElementById('settings-toast');
+  t.className='show '+type;
+  document.getElementById('toast-msg').textContent=msg;
+  if(window.lucide)lucide.createIcons();
+  _tt=setTimeout(()=>{t.className='';},3200);
+}
+function setToggle(id,on){const el=document.getElementById(id);if(el)el.classList.toggle('on',on);}
+function setPill(id,text,cls){const el=document.getElementById(id);if(!el)return;el.textContent=text;el.className='text-[10px] font-bold px-2 py-0.5 rounded-full '+cls;}
+function setDot(id,color){const el=document.getElementById(id);if(!el)return;const m={green:'bg-emerald-400',amber:'bg-amber-400',red:'bg-red-400',blue:'bg-blue-400'};el.className='w-2.5 h-2.5 rounded-full dot-pulse '+(m[color]||'bg-slate-300');}
+function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val??'—';}
 
-            const isDbConnected = data.database.status === 'connected';
-            document.getElementById('db-status-text').innerText = isDbConnected ? 'Connected' : 'Degraded Mode';
-            document.getElementById('db-mode-text').innerText = data.database.mode;
-            document.getElementById('db-status-dot').className = isDbConnected ? 'w-2.5 h-2.5 rounded-full bg-emerald-400' : 'w-2.5 h-2.5 rounded-full bg-amber-400';
-
-            document.getElementById('ai-provider-text').innerText = data.ai_engine.active_provider;
-            document.getElementById('ai-status-dot').className = data.ai_engine.llm_configured ? 'w-2.5 h-2.5 rounded-full bg-emerald-400' : 'w-2.5 h-2.5 rounded-full bg-blue-400';
-        } catch (e) {
-            console.error('Failed to load health:', e);
-        }
+async function loadHealth(){
+  try{
+    const d=await fetch('/api/system/health').then(r=>r.json());
+    const dbOk=d.database?.mongodb?.status==='connected';
+    const waOk=d.meta_whatsapp?.token_configured;
+    const aiOk=d.ai_engine?.llm_configured;
+    set('db-status',dbOk?'Connected':'Degraded Mode');set('db-mode',d.database?.mongodb?.mode);
+    setDot('db-dot',dbOk?'green':'amber');setPill('db-pill',dbOk?'Connected':'Degraded',dbOk?'pill-ok':'pill-warn');
+    set('wa-status',waOk?'Active & Connected':'Token Missing');
+    set('wa-info',`ID: ${d.meta_whatsapp?.phone_number_id} (${d.meta_whatsapp?.api_version})`);
+    setDot('wa-dot',waOk?'green':'red');setPill('wa-pill',waOk?'Connected':'Error',waOk?'pill-ok':'pill-err');
+    set('ai-status',d.ai_engine?.active_provider);set('ai-provider-label',aiOk?'LLM Active':'Fallback Mode');
+    setDot('ai-dot',aiOk?'green':'blue');setPill('ai-pill',aiOk?'LLM Active':'Fallback',aiOk?'pill-ok':'pill-warn');
+    const ts=new Date(d.timestamp);
+    set('hd-timestamp',ts.toLocaleString());set('hd-status',d.status);
+    set('hd-mongo-target',(d.database?.mongodb?.target||'—').replace(/mongodb(\+srv)?:\/\/[^:@]+:[^@]+@/,'mongodb://***@'));
+    set('hd-phone-id',d.meta_whatsapp?.phone_number_id);set('hd-api-ver',d.meta_whatsapp?.api_version);
+    set('hd-token',d.meta_whatsapp?.token_configured?'✓ Configured':'✗ Missing');
+    set('hd-ai-provider',d.ai_engine?.active_provider);
+  }catch(e){console.error('Health:',e);}
+}
+async function loadAiModel(){
+  try{
+    const d=await fetch('/api/settings/ai-model').then(r=>r.json());
+    const sel=document.getElementById('ai-model-select');
+    if(sel)sel.value=d.model_name||'gemini-3.6-flash';
+    set('api-key-status-text',d.api_key_configured?`GEMINI_API_KEY set (mode: ${d.mode})`:'API key not found — fallback mode');
+    setPill('api-key-pill',d.api_key_configured?'Configured':'Missing',d.api_key_configured?'pill-ok':'pill-err');
+  }catch(e){console.error(e);}
+}
+async function saveAiModel(){
+  const model=document.getElementById('ai-model-select').value;
+  const temp=parseFloat(document.getElementById('ai-temp-slider').value);
+  try{
+    const d=await fetch('/api/settings/ai-model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model_name:model,temperature:temp})}).then(r=>r.json());
+    if(d.success){showToast('AI model settings saved!','ok');await loadAiModel();}else showToast('Failed to save','err');
+  }catch(e){showToast('Error saving','err');}
+}
+async function loadSafetySettings(){
+  try{
+    const d=await fetch('/api/settings/ai-autoreply').then(r=>r.json());
+    _globalAiEnabled=d.global_ai_autoreply_enabled;
+    setToggle('global-ai-track',_globalAiEnabled);
+    const badge=document.getElementById('global-status-badge');
+    const label=document.getElementById('global-ai-label');
+    if(_globalAiEnabled){
+      if(label){label.textContent='Enabled';label.className='text-[11px] font-bold text-emerald-600 dark:text-emerald-400';}
+      if(badge)badge.className='flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full pill-ok';
+    }else{
+      if(label){label.textContent='Disabled';label.className='text-[11px] font-bold text-red-500';}
+      if(badge)badge.className='flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full pill-err';
     }
-
-    async function loadAiSettings() {
-        try {
-            const res = await fetch('/api/settings/ai-autoreply');
-            const data = await res.json();
-            const enabled = data.global_ai_autoreply_enabled;
-            const toggle = document.getElementById('global-ai-toggle');
-            const label = document.getElementById('global-ai-status-label');
-            if (toggle) toggle.checked = enabled;
-            if (label) {
-                label.innerText = enabled ? 'Global AI Enabled' : 'Global AI Disabled (Manual Only)';
-                label.className = enabled ? 'text-xs font-bold text-emerald-400' : 'text-xs font-bold text-rose-400';
-            }
-        } catch (e) {
-            console.error('Failed to load AI settings:', e);
-        }
-    }
-
-    async function toggleGlobalAi(enabled) {
-        const label = document.getElementById('global-ai-status-label');
-        try {
-            const res = await fetch('/api/settings/ai-autoreply', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled: enabled })
-            });
-            const data = await res.json();
-            if (label) {
-                label.innerText = data.global_ai_autoreply_enabled ? 'Global AI Enabled' : 'Global AI Disabled (Manual Only)';
-                label.className = data.global_ai_autoreply_enabled ? 'text-xs font-bold text-emerald-400' : 'text-xs font-bold text-rose-400';
-            }
-        } catch (e) {
-            console.error('Failed to toggle global AI:', e);
-            loadAiSettings();
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        loadHealth();
-        loadAiSettings();
-    });
+  }catch(e){console.error(e);}
+}
+async function toggleGlobalAi(){
+  _globalAiEnabled=!_globalAiEnabled;setToggle('global-ai-track',_globalAiEnabled);
+  try{
+    await fetch('/api/settings/ai-autoreply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:_globalAiEnabled})});
+    showToast(_globalAiEnabled?'Global AI auto-reply enabled':'AI auto-reply disabled — manual mode',_globalAiEnabled?'ok':'err');
+    await loadSafetySettings();
+  }catch(e){showToast('Failed to toggle','err');_globalAiEnabled=!_globalAiEnabled;setToggle('global-ai-track',_globalAiEnabled);}
+}
+async function loadFollowupSettings(){
+  try{
+    const d=await fetch('/api/settings/followups').then(r=>r.json());
+    _followupEnabled=d.enabled;setToggle('followup-track',_followupEnabled);
+    set('followup-status-text',_followupEnabled?'Actively sending drip follow-ups':'Paused — no follow-ups will be sent');
+    const minS=document.getElementById('min-hours-slider');const maxS=document.getElementById('max-hours-slider');
+    const cntS=document.getElementById('max-count-slider');const cdS=document.getElementById('cooldown-slider');
+    if(minS){minS.value=d.min_hours;set('min-hours-display',d.min_hours+'h');}
+    if(maxS){maxS.value=d.max_hours;set('max-hours-display',d.max_hours+'h');}
+    if(cntS){cntS.value=d.max_count;set('max-count-display',d.max_count);}
+    if(cdS){cdS.value=d.cooldown_hours;set('cooldown-display',d.cooldown_hours+'h');}
+    set('dw-start',d.delivery_window_start);set('dw-end',d.delivery_window_end);
+  }catch(e){console.error(e);}
+}
+async function toggleFollowup(){
+  _followupEnabled=!_followupEnabled;setToggle('followup-track',_followupEnabled);
+  try{
+    await fetch('/api/settings/followups',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:_followupEnabled})});
+    showToast(_followupEnabled?'Follow-up automation enabled':'Follow-up automation paused',_followupEnabled?'ok':'err');
+    set('followup-status-text',_followupEnabled?'Actively sending drip follow-ups':'Paused — no follow-ups will be sent');
+  }catch(e){_followupEnabled=!_followupEnabled;setToggle('followup-track',_followupEnabled);showToast('Error','err');}
+}
+async function saveFollowups(){
+  const payload={enabled:_followupEnabled,min_hours:parseFloat(document.getElementById('min-hours-slider').value),max_hours:parseFloat(document.getElementById('max-hours-slider').value),max_count:parseInt(document.getElementById('max-count-slider').value),cooldown_hours:parseFloat(document.getElementById('cooldown-slider').value)};
+  try{
+    const d=await fetch('/api/settings/followups',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());
+    if(d.success)showToast('Follow-up settings saved!','ok');else showToast('Failed to save','err');
+  }catch(e){showToast('Error saving','err');}
+}
+async function loadSystemInfo(){
+  try{
+    const d=await fetch('/api/settings/system-info').then(r=>r.json());
+    set('si-app-name',d.app_name);set('si-version','v'+d.version);set('si-agency',d.agency_name);
+    set('si-retention',d.conversation_retention_days+' days');set('si-cab',d.cab_service_enabled?'✓ Enabled':'✗ Disabled');
+    set('si-phone-id',d.phone_number_id);set('si-api-ver',d.api_version);
+    set('si-token',d.whatsapp_token_configured?'✓ Configured':'✗ Missing');
+    set('si-verify',d.verify_token_configured?'✓ Configured':'✗ Missing');
+    set('si-db-status',d.database?.status);set('si-db-mode',d.database?.mode);set('si-db-name',d.database?.name);
+    set('si-qdrant-host',d.qdrant?.host);set('si-qdrant-port',d.qdrant?.port);
+    set('si-qdrant-col',d.qdrant?.collection);set('si-embed',d.qdrant?.embedding_model);
+    set('si-mps',d.campaign?.messages_per_second+'/s');set('si-batch',d.campaign?.batch_size);
+    set('si-retries',d.campaign?.max_retries);set('si-dw',d.campaign?.delivery_window);
+  }catch(e){console.error(e);}
+}
+async function loadRagInfo(){
+  try{
+    const [propRes,docRes,vecRes,sysRes]=await Promise.all([
+      fetch('/api/properties').then(r=>r.json()).catch(()=>({properties:[]})),
+      fetch('/api/knowledge/documents').then(r=>r.json()).catch(()=>({documents:[]})),
+      fetch('/api/vector/health').then(r=>r.json()).catch(()=>({status:'unavailable'})),
+      fetch('/api/settings/system-info').then(r=>r.json()).catch(()=>({}))
+    ]);
+    set('rag-prop-count',(propRes.properties?.length??0)+' listings');
+    set('rag-doc-count',(docRes.documents?.length??0)+' files');
+    set('rag-vector-status',vecRes.status==='ok'?'Online':(vecRes.status||'Offline'));
+    set('rag-embed-model',sysRes?.qdrant?.embedding_model||'—');
+  }catch(e){}
+}
+document.addEventListener('DOMContentLoaded',async()=>{
+  if(window.lucide)lucide.createIcons();
+  await Promise.all([loadHealth(),loadAiModel(),loadSafetySettings(),loadFollowupSettings(),loadSystemInfo(),loadRagInfo()]);
+  if(window.lucide)lucide.createIcons();
+});
+setInterval(loadHealth,30000);
 </script>
 {% endblock %}

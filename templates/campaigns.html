@@ -54,9 +54,9 @@
     </div>
 
     <!-- ACTION BAR -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <h3 class="text-sm font-bold text-white uppercase tracking-wider">Campaign Sequences</h3>
-        <button onclick="openCampaignModal()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
+        <button onclick="openCampaignModal()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2">
             <i data-lucide="plus" class="w-4 h-4"></i>
             <span>Create New Campaign</span>
         </button>
@@ -65,7 +65,7 @@
     <!-- CAMPAIGNS TABLE -->
     <div class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-lg overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs text-slate-300">
+            <table class="w-full min-w-[700px] text-left text-xs text-slate-300">
                 <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
                     <tr>
                         <th class="px-6 py-4">Campaign Title</th>
